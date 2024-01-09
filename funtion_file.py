@@ -4,24 +4,37 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 
-def create_random_matrix(n, m=None, k=1):
-    """
-    Creates a matrix of random values between 0 and 1 of size n x m.
+class MatrixMaker:
+    def __init__(self, rows, cols=None, k=1, line_size=(1,2)):
+        self.rows = rows
+        self.cols = cols
+        if self.cols is None:
+            self.cols = rows
 
-    Parameters:
-    - n: Number of rows
-    - m: Number of columns
+        self.line_size = line_size
 
-    Returns:
-    - A numpy array representing the random matrix
-    """
-    if m is None:
-        m = n
+        self.matrix = np.random.rand(self.rows, self.cols)
+        kernel = np.ones((k, k), dtype=float) / k ** 2
+        self.smooth_matrix = sp.ndimage.convolve(self.matrix, kernel)
 
-    random_matrix = np.random.rand(n, m)
-    kernel = np.ones((k, k), dtype=float) / k ** 2
-    smoothed = sp.ndimage.convolve(random_matrix, kernel)
-    return smoothed
+    def create_matrix_with_line(self, alfa):
+        matrix = np.ones((self.rows, self.cols))
+        line_position = (np.random.randint(low=0, high=self.rows - self.line_size[0] + 1),
+                         np.random.randint(low=0, high=self.cols - self.line_size[1] + 1))
+
+        matrix[line_position[0]:line_position[0] + self.line_size[0],
+               line_position[1]:line_position[1] + self.line_size[1]] = alfa
+        return matrix
+
+    def create_matrix_list(self, num_per_mat):
+        matrix_list = []
+        alfa = np.linspace(0, 1, num=num_per_mat)
+
+        for i in range(num_per_mat):
+            line = self.create_matrix_with_line(alfa)
+            matrix_list.append(self.smooth_matrix*line)
+
+        return matrix_list
 
 
 def print_matrix(matrix):
@@ -35,7 +48,7 @@ def print_matrix(matrix):
         print(" ".join(f"{value:.2f}" for value in row))
 
 
-def plot_matrix_movie(matrix_list, interval=200, cmap='viridis'):
+def plot_matrix_movie(matrix_list, interval=500):
     """
     Plots a movie of a list of matrices.
 
@@ -51,19 +64,23 @@ def plot_matrix_movie(matrix_list, interval=200, cmap='viridis'):
 
     def update(frame):
         ax.clear()
-        ax.imshow(matrix_list[frame], cmap=cmap, interpolation=None, aspect='auto')
+        ax.imshow(matrix_list[frame], interpolation='nearest', aspect='auto')
         ax.set_title(f"Frame {frame + 1}/{len(matrix_list)}")
 
     animation = FuncAnimation(fig, update, frames=len(matrix_list), interval=interval, repeat=True)
-
+    plt.tight_layout()
     plt.show(block=False)
-
+    plt.show()
     return animation
 
 
 # Example usage:
-n = 2  # number of rows
-random_matrix = create_random_matrix(n, k=2)
-print_matrix(random_matrix)
+row_len = 4  # number of rows
+col_len = 6
+kernel_size = 3
+line_size = (1, 2)
 
-random_animation = plot_matrix_movie([create_random_matrix(n, k=2) for _ in range(5)])
+matrixmaker_list = [MatrixMaker(row_len, col_len, k=kernel_size, line_size=line_size) for _ in range(5)]
+matrix_list = [matrixmaker_list[i].create_matrix_list(10) for i in range(5)]
+plot_matrix_movie(matrix_list[0])
+plt.show()
