@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 
 
 class MatrixMaker:
-    def __init__(self, rows, cols=None, k=1, line_size=(1,2)):
+    def __init__(self, rows, cols=None, k=1, line_size=(1, 2)):
         self.rows = rows
         self.cols = cols
         if self.cols is None:
@@ -16,23 +16,21 @@ class MatrixMaker:
         self.matrix = np.random.rand(self.rows, self.cols)
         kernel = np.ones((k, k), dtype=float) / k ** 2
         self.smooth_matrix = sp.ndimage.convolve(self.matrix, kernel)
+        self.line_position = (np.random.randint(low=0, high=self.rows - self.line_size[0] + 1),
+                              np.random.randint(low=0, high=self.cols - self.line_size[1] + 1))
 
     def create_matrix_with_line(self, alfa):
         matrix = np.ones((self.rows, self.cols))
-        line_position = (np.random.randint(low=0, high=self.rows - self.line_size[0] + 1),
-                         np.random.randint(low=0, high=self.cols - self.line_size[1] + 1))
-
-        matrix[line_position[0]:line_position[0] + self.line_size[0],
-               line_position[1]:line_position[1] + self.line_size[1]] = alfa
+        matrix[self.line_position[0]:self.line_position[0] + self.line_size[0],
+        self.line_position[1]:self.line_position[1] + self.line_size[1]] = alfa
         return matrix
 
     def create_matrix_list(self, num_per_mat):
         matrix_list = []
-        alfa = np.linspace(0, 1, num=num_per_mat)
-
+        alfa = np.linspace(1, 0, num=num_per_mat)
         for i in range(num_per_mat):
-            line = self.create_matrix_with_line(alfa)
-            matrix_list.append(self.smooth_matrix*line)
+            line = self.create_matrix_with_line(alfa[i])
+            matrix_list.append(self.smooth_matrix * line)
 
         return matrix_list
 
@@ -48,7 +46,7 @@ def print_matrix(matrix):
         print(" ".join(f"{value:.2f}" for value in row))
 
 
-def plot_matrix_movie(matrix_list, interval=500):
+def plot_matrix_movie(matrix_list, interval=200):
     """
     Plots a movie of a list of matrices.
 
@@ -64,23 +62,33 @@ def plot_matrix_movie(matrix_list, interval=500):
 
     def update(frame):
         ax.clear()
-        ax.imshow(matrix_list[frame], interpolation='nearest', aspect='auto')
-        ax.set_title(f"Frame {frame + 1}/{len(matrix_list)}")
+        im = ax.imshow(matrix_list[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
 
-    animation = FuncAnimation(fig, update, frames=len(matrix_list), interval=interval, repeat=True)
+        return [im]
+
+    animation = FuncAnimation(fig, update, frames=len(matrix_list), interval=interval, repeat=False, blit=True)
     plt.tight_layout()
     plt.show(block=False)
     plt.show()
     return animation
 
 
-# Example usage:
-row_len = 4  # number of rows
-col_len = 6
-kernel_size = 3
-line_size = (1, 2)
+def concatenate_matrices(matrix_lists):
+    concatenated_matrices = []
+    for matrix_list in matrix_lists:
+        concatenated_matrices += matrix_list
+    return concatenated_matrices
 
-matrixmaker_list = [MatrixMaker(row_len, col_len, k=kernel_size, line_size=line_size) for _ in range(5)]
-matrix_list = [matrixmaker_list[i].create_matrix_list(10) for i in range(5)]
-plot_matrix_movie(matrix_list[0])
+
+# Example usage:
+row_len = 128  # number of rows
+col_len = 156
+kernel_size = 3
+line_size = (2, 5)
+num_of_mat = 5
+numb_of_picture = 14
+
+matrix_maker_list = [MatrixMaker(row_len, col_len, k=kernel_size, line_size=line_size) for _ in range(num_of_mat)]
+matrix_list = [matrix_maker_list[i].create_matrix_list(numb_of_picture) for i in range(num_of_mat)]
+plot_matrix_movie(concatenate_matrices(matrix_list))
 plt.show()
