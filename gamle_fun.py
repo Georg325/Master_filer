@@ -1,4 +1,4 @@
-
+import numpy as np
 def print_matrix(matrix):
     """
     Nicely prints a 2D matrix.
@@ -42,3 +42,20 @@ def concatenate_matrices(matrix_lists):
     for matrix_list in matrix_lists:
         concatenated_matrices += matrix_list
     return concatenated_matrices
+
+
+def create_matrix_with_line(alfa):
+    row_len = 5
+    col_len = 5
+    kernel_size = (2, 2)
+    line_size = (2, 1)
+    num_of_mat = 1
+    numb_of_picture = 5
+
+    matrix = np.ones((row_len, col_len))
+    matrix[line_size[0]:line_size[0] + line_size[0],
+    line_size[1]:line_size[1] + line_size[1]] = alfa
+    print(np.logical_not(matrix).astype(int))
+
+
+create_matrix_with_line(0)

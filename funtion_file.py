@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import scipy as sp
 
 import matplotlib.pyplot as plt
@@ -7,18 +8,14 @@ from matplotlib.animation import FuncAnimation
 from keras.models import Sequential
 from keras.layers import Dense, Flatten
 
+
 class MatrixMaker:
     def __init__(self, rows, cols=None, kernel_size=(1, 1), line_size=(1, 2), num_per_mat=10):
         self.rows = rows
-        self.cols = cols
+        self.cols = cols or rows
         self.kernel_size = kernel_size
         self.line_size = line_size
         self.num_per_mat = num_per_mat
-
-        if self.cols is None:
-            self.cols = rows
-
-        self.matrix = np.random.rand(self.rows, self.cols)
 
         self.smooth_matrix = self.create_smoothed_matrix()
         self.line_start_position = self.create_line()
@@ -28,7 +25,7 @@ class MatrixMaker:
 
     def create_smoothed_matrix(self):
         kernel = np.ones(shape=self.kernel_size, dtype=float) / (self.kernel_size[0] * self.kernel_size[1])
-        return sp.ndimage.convolve(self.matrix, kernel)
+        return sp.ndimage.convolve(np.random.rand(self.rows, self.cols), kernel)
 
     def create_line(self):
         return (np.random.randint(low=0, high=self.rows - self.line_size[0] + 1),
@@ -40,7 +37,7 @@ class MatrixMaker:
     def create_matrix_with_line(self, alfa):
         matrix = np.ones((self.rows, self.cols))
         matrix[self.line_start_position[0]:self.line_start_position[0] + self.line_size[0],
-               self.line_start_position[1]:self.line_start_position[1] + self.line_size[1]] = alfa
+        self.line_start_position[1]:self.line_start_position[1] + self.line_size[1]] = alfa
         return matrix
 
     def create_matrix_line_fade(self):
@@ -63,7 +60,6 @@ class MatrixLister:
         self.line_size = line_size
         self.num_of_mat = num_of_mat
         self.num_per_mat = num_per_mat
-
 
         self.matrix_list = self.listing_matrix()
         self.con_matrix, self.con_alfa = self.concatenate_matrices()
@@ -142,6 +138,7 @@ class NeuralNetwork:
 
     def build_model(self, input_size, num_neuron):
         model = Sequential()
+        model.add(Flatten(input_shape=(input_size, 1)))
         model.add(Dense(num_neuron, input_shape=(input_size,), activation='relu'))
         model.add(Dense(input_size, activation='sigmoid'))
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -150,16 +147,34 @@ class NeuralNetwork:
     def train(self, input_data, output_data, epochs, batch_size):
         self.model.fit(input_data, output_data, epochs=epochs, batch_size=batch_size)
 
+    def predict(self, input_matrix):
+        input_data = input_matrix.reshape(1, -1)
+        predicted_output = self.model.predict(input_data)
+        predicted_line_pos_mat = (predicted_output > 0.5).astype(np.int8).reshape(input_matrix.shape)
+        return predicted_line_pos_mat
 
-# Example usage:
+
 row_len = 3
 col_len = 3
 kernel_size = (2, 2)
 line_size = (1, 1)
-num_of_mat = 1000
-numb_of_picture = 10
-num_of_neurons = 128
+num_of_mat = 500
+numb_of_picture = 5
+num_of_neurons = 9
 
 matrix_lister = MatrixLister(row_len, col_len, kernel_size, line_size, num_of_mat, numb_of_picture, num_of_neurons)
-matrix_lister.train_neural_network()
 
+batch_size = 64
+epochs = 10
+
+start = time.time()
+matrix_lister.train_neural_network(batch_size=batch_size, num_epochs=epochs)
+print(time.time() - start)
+
+# Assuming you have a trained matrix_lister and a trained neural network
+input_matrix = matrix_lister.matrix_list[0].create_matrix_line_fade()[-1]  # Example input matrix
+predicted_line_pos_mat = matrix_lister.neural_network.predict(input_matrix)
+
+# Print or use the predicted_line_pos_mat as needed
+print("Predicted Line Position Matrix:")
+print(predicted_line_pos_mat)
