@@ -53,11 +53,11 @@ class MatrixMaker:
 
 
 class MatrixLister:
-    def __init__(self, row_len, col_len, kernel_size, line_size, num_of_mat, num_per_mat, num_neuron):
+    def __init__(self, row_len, col_len, kernel_size, max_line_size, num_of_mat, num_per_mat, num_neuron):
         self.row_len = row_len
         self.col_len = col_len
         self.kernel_size = kernel_size
-        self.line_size = line_size
+        self.max_line_size = max_line_size
         self.num_of_mat = num_of_mat
         self.num_per_mat = num_per_mat
 
@@ -67,8 +67,12 @@ class MatrixLister:
         self.neural_network = NeuralNetwork(input_size=row_len * col_len, num_neuron=num_neuron)
 
     def listing_matrix(self):
-        return [MatrixMaker(self.row_len, self.col_len, self.kernel_size, self.line_size, self.num_per_mat)
-                for _ in range(self.num_of_mat)]
+        line_sizes = [(np.random.randint(1, self.max_line_size[0] + 1),
+                       np.random.randint(1, self.max_line_size[1] + 1))
+                      for _ in range(self.num_of_mat)]
+
+        return [MatrixMaker(self.row_len, self.col_len, self.kernel_size, line_sizes[i], self.num_per_mat)
+                for i in range(self.num_of_mat)]
 
     def concatenate_matrices(self):
         concatenated_matrices = []
@@ -154,16 +158,16 @@ class NeuralNetwork:
         return predicted_line_pos_mat
 
 
-row_len = 3
-col_len = 3
+row_len = 6
+col_len = 6
 kernel_size = (2, 2)
-line_size = (1, 1)
+max_line_size = (3, 3)
 num_of_mat = 500
 numb_of_picture = 5
 num_of_neurons = 9
 
-matrix_lister = MatrixLister(row_len, col_len, kernel_size, line_size, num_of_mat, numb_of_picture, num_of_neurons)
-
+matrix_lister = MatrixLister(row_len, col_len, kernel_size, max_line_size, num_of_mat, numb_of_picture, num_of_neurons)
+matrix_lister.plot()
 batch_size = 64
 epochs = 10
 
