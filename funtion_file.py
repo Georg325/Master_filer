@@ -27,13 +27,13 @@ def matrix_maker(rows, cols=None, kernel_size=(1, 1), line_size=(1, 2), num_per_
     line_pos_mat = np.array(np.logical_not(np.ones((rows, cols))).astype(int), dtype='float16')
     return alfa, matrix_fade_lis, line_pos_mat
 
-
-# Example usage
-alfa, matrix_fade_lis, line_pos_mat = matrix_maker(rows=3, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3)
-print(alfa)
-print()
-for k in matrix_fade_lis:
-    print(k)
+if __name__ == '__main__':
+    # Example usage
+    alfa, matrix_fade_lis, line_pos_mat = matrix_maker(rows=3, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3)
+    print(alfa)
     print()
-print(line_pos_mat)
+    for k in matrix_fade_lis:
+        print(k)
+        print()
+    print(line_pos_mat)
 
