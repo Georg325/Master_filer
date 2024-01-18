@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 
 
-def MatrixMaker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
+def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
     cols = cols or rows
 
     # smooth
@@ -29,16 +29,16 @@ def MatrixMaker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_m
             line_pos_mat = np.array(np.logical_not(matrix_with_line).astype(int), dtype='float16')
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
-    return matrix_line_fade, line_pos_mat, alfa
+    return np.array(matrix_line_fade), np.array(line_pos_mat), np.array(alfa)
 
 
 if __name__ == '__main__':
-    matrix_fade, line_pos_mat_d, alfa_d = MatrixMaker(4, 5, (2, 2), (1, 3), 4)
+    matrix_fade, line_pos_mat_d, alfa_d = matrix_maker(4, 5, (2, 2), (1, 3), 4)
 
     print(alfa_d)
     print()
     print(line_pos_mat_d)
-    print()
+    print(matrix_fade.shape)
 
     for mat in matrix_fade:
         print(mat)
