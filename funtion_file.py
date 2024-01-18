@@ -1,5 +1,6 @@
 import numpy as np
 import scipy as sp
+import tensorflow as tf
 
 
 def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
@@ -40,7 +41,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
-    return np.array(matrix_line_fade), np.array(line_pos_mat), np.array(alfa)
+    return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
 if __name__ == '__main__':
