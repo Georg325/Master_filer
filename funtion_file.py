@@ -21,25 +21,36 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
     # matrix_fade
     matrix_line_fade = []
+    line_pos_mat = []
+
     for i in range(num_per_mat):
+
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
                          line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
-        if alfa[i] == 0:
-            line_pos_mat = np.array(np.logical_not(matrix_with_line).astype(int), dtype='float16')
+
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
+
+        if alfa[i] == 1:
+            line_pos_mat.append(np.zeros((rows, cols)))
+
+        else:
+            matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
+                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+
+            line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
     return np.array(matrix_line_fade), np.array(line_pos_mat), np.array(alfa)
 
 
 if __name__ == '__main__':
-    matrix_fade, line_pos_mat_d, alfa_d = matrix_maker(4, 5, (2, 2), (1, 3), 4)
+    matrix_fade, line_pos_mat_d, alfa_d = matrix_maker(2, 2, (2, 2), (1, 2), 4)
 
     print(alfa_d)
     print()
-    print(line_pos_mat_d)
+    print(line_pos_mat_d.shape)
     print(matrix_fade.shape)
 
-    for mat in matrix_fade:
+    for mat in line_pos_mat_d:
         print(mat)
         print()
