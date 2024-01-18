@@ -1,57 +1,45 @@
-import tensorflow as tf
+import numpy as np
+import scipy as sp
 
-def matrix_maker(rows, cols=None, kernel_size=(1, 1), line_size=(1, 2), num_per_mat=10):
+
+def MatrixMaker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
     cols = cols or rows
 
-    # Create smooth matrix directly in TensorFlow
-    smooth_matrix = tf.random.uniform((rows, cols), dtype=tf.float16)
+    # smooth
+    kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
+    smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
-    # Create line start position
-    line_start_position = (
-        tf.random.uniform((), maxval=rows - line_size[0] + 1, dtype=tf.int16),
-        tf.random.uniform((), maxval=cols - line_size[1] + 1, dtype=tf.int16)
-    )
+    # line_start
+    line_start_position = (np.random.randint(low=0, high=rows - line_size[0] + 1),
+                           np.random.randint(low=0, high=cols - line_size[1] + 1))
 
-    # Create alfa array directly in TensorFlow
-    alfa = tf.linspace(1.0, 0.0, num=num_per_mat)
+    # alfa
+    alfa = np.linspace(1, 0, num=num_per_mat)
 
-    # Create matrix line fade directly in TensorFlow
-    matrix_fade_lis = []
+    # answer mat
+    line_pos_mat = np.zeros((rows, cols))
+
+    # matrix_fade
+    matrix_line_fade = []
     for i in range(num_per_mat):
-        line = tf.ones((rows, cols), dtype=tf.float16)
-        line[
-            line_start_position[0]:line_start_position[0] + line_size[0],
-            line_start_position[1]:line_start_position[1] + line_size[1]
-        ] = alfa[i]
-        matrix_fade = smooth_matrix * line
-        matrix_fade_lis.append(matrix_fade)
+        matrix_with_line = np.ones((rows, cols))
+        matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
+                         line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+        if alfa[i] == 0:
+            line_pos_mat = np.array(np.logical_not(matrix_with_line).astype(int), dtype='float16')
+        matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
-    # Create line position matrix directly in TensorFlow
-    line_pos_mat_tensor = tf.ones((rows, cols), dtype=tf.float16)
-
-    return alfa, matrix_fade_lis, line_pos_mat_tensor
-
-# Example usage
-alfa_tensor, matrix_fade_tensor_list, line_pos_mat_tensor = matrix_maker(rows=5, cols=5, kernel_size=(2, 2), line_size=(2, 2), num_per_mat=3)
-
-print("Alfa Tensor:")
-print(alfa_tensor)
-
-print("\nMatrix Fade Tensors:")
-for matrix_fade_tensor in matrix_fade_tensor_list:
-    print(matrix_fade_tensor)
-
-print("\nLine Position Matrix Tensor:")
-print(line_pos_mat_tensor)
+    return matrix_line_fade, line_pos_mat, alfa
 
 
 if __name__ == '__main__':
-    # Example usage
-    alfa, matrix_fade_lis, line_pos_mat = matrix_maker(rows=3, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3)
-    print(alfa)
-    print()
-    for k in matrix_fade_lis:
-        print(k)
-        print()
-    print(line_pos_mat)
+    matrix_fade, line_pos_mat_d, alfa_d = MatrixMaker(4, 5, (2, 2), (1, 3), 4)
 
+    print(alfa_d)
+    print()
+    print(line_pos_mat_d)
+    print()
+
+    for mat in matrix_fade:
+        print(mat)
+        print()
