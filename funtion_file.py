@@ -17,9 +17,6 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
     # alfa
     alfa = np.linspace(1, 0, num=num_per_mat)
 
-    # answer mat
-    line_pos_mat = np.zeros((rows, cols))
-
     # matrix_fade
     matrix_line_fade = []
     line_pos_mat = []
