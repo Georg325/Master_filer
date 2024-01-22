@@ -1,10 +1,12 @@
 import numpy as np
 import scipy as sp
+
 import tensorflow as tf
 from tensorflow.keras import backend as K
+from matplotlib.animation import FuncAnimation
+
 import matplotlib.pyplot as plt
 import pandas as pd
-
 
 
 def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
@@ -82,6 +84,31 @@ def plot_training_history(training_history_object, list_of_metrics=None):
         ax[i].legend()
     fig.tight_layout()
     plt.show()
+
+
+
+def rotater(line):
+    if np.random.random() < 0.5:
+        return line[::-1]
+    return line
+
+
+def plot(matrix, interval=200):
+    fig, ax = plt.subplots()
+
+    def update(frame):
+        ax.clear()
+        im = ax.imshow(matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+
+        return [im]
+
+    animation = FuncAnimation(fig, update, frames=len(matrix), interval=interval, repeat=False, blit=True)
+    plt.tight_layout()
+    plt.show(block=False)
+    plt.show()
+    return animation
+
+
 
 
 if __name__ == '__main__':
