@@ -109,16 +109,3 @@ def plot(matrix, interval=200):
     return animation
 
 
-
-
-if __name__ == '__main__':
-    matrix_fade, line_pos_mat_d, alfa_d = matrix_maker(2, 2, (2, 2), (1, 2), 4)
-
-    print(alfa_d)
-    print()
-    print(line_pos_mat_d.shape)
-    print(matrix_fade.shape)
-
-    for mat in line_pos_mat_d:
-        print(mat)
-        print()
