@@ -4,6 +4,7 @@ from keras.models import Sequential
 from keras.layers import Dense, GRU, Conv2D, Flatten, MaxPooling2D, Dropout, Reshape, TimeDistributed
 
 import tensorflow as tf
+from keras import backend as K
 import keras as ks
 
 import numpy as np
@@ -65,16 +66,21 @@ def build_model(row_len, col_len, filter_base, num_neuron):
 
 
 def custom_loss(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + K.epsilon())
+
+    # Calculate 1 - Precision as the loss
+    loss_1 = 1 - precision
+
     # Define a mask to identify positions where y_true is 1
     mask = tf.cast(y_true, dtype=tf.bool)
+    penalty = tf.where(mask, tf.math.square(tf.maximum(0.5 - y_pred, 0)), 0)
 
     # Calculate mean squared error
     mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
 
-    # Penalize predictions less than 0.5 when y_true is 1
-    penalty = tf.where(mask, tf.math.square(tf.maximum(0.5 - y_pred, 0)), 0)
-
     # Combine the mean squared error with the custom penalty
-    combined_loss = mse_loss + 500 * tf.reduce_mean(penalty)
+    combined_loss = mse_loss + 500 * tf.reduce_mean(penalty) + loss_1
 
     return combined_loss
