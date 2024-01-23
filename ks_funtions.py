@@ -1,7 +1,7 @@
 from abc import ABC
 
 from keras.models import Sequential
-from keras.layers import Dense, GRU, Conv2D, Flatten, MaxPooling2D, Dropout, Reshape, TimeDistributed
+from keras.layers import Dense, GRU, Conv2D, Flatten, MaxPooling2D, Dropout, Reshape, TimeDistributed, Input, LSTM
 
 import tensorflow as tf
 from keras import backend as K
@@ -13,18 +13,21 @@ import numpy as np
 class DataGenerator(ks.utils.Sequence, ABC):
     """Generates data for Keras"""
 
-    def __init__(self, mat_obj):
+    def __init__(self, mat_obj, batch_size=32, fades_per_mat=8, num_of_mat=100):
         """Initialization"""
         self.mat_obj = mat_obj
+        self.batch_size = batch_size
+        self.fades_per_mat = fades_per_mat
+        self.num_of_mat = num_of_mat
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        return 2
+        return round(self.num_of_mat * self.fades_per_mat / self.batch_size)
 
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate data
-        x, y, _ = self.mat_obj.create_matrix_in_list(2 * 512)
+        x, y, _ = self.mat_obj.create_matrix_in_list(self.num_of_mat * self.fades_per_mat)
 
         return np.expand_dims(x, -1), np.expand_dims(y, -1)
 
@@ -38,30 +41,28 @@ def block(model, row_len, col_len, filter_base, num):
     return model
 
 
-def build_model(row_len, col_len, filter_base, num_neuron):
+def build_model(row_len, col_len, filter_base):
     model = Sequential()
 
     # Apply Conv2D and Flatten to each time step
     # block(model, row_len, col_len, filter_base, 1)
-
-    model.add(Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+    model.add(Input(shape=(8, row_len, col_len, 1)))
+    model.add(TimeDistributed(Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
+    model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
+    model.add(TimeDistributed(Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='relu')))
+    model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
+    model.add(TimeDistributed(Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='relu')))
+    model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(TimeDistributed(Flatten()))
 
-    model.add(GRU(row_len * col_len, activation='relu'))
-    model.add(Reshape((row_len, col_len, 1), name='jeff'))
-
-    model.add(Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
-    model.add(TimeDistributed(Flatten()))
-
-    model.add(GRU(row_len * col_len, activation='relu'))
+    model.add(LSTM(row_len * col_len, activation='relu', return_sequences=True))
+    model.add(LSTM(round(row_len * col_len / 2), activation='relu'))
 
     # Fully connected layer
-    model.add(Dense(row_len * col_len, activation='sigmoid'))
+    model.add(Dense(8*row_len * col_len, activation='sigmoid'))
 
     # Reshape to the desired output shape
-    model.add(Reshape((row_len, col_len, 1), name='philip'))
+    model.add(Reshape((8, row_len, col_len, 1), name='philip'))
     return model
 
 

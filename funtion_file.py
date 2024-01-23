@@ -40,12 +40,7 @@ class MatrixLister:
             list_pos_mat.append(pos)
             list_alfa.append(alf)
 
-        # Concatenate the lists along the first axis (axis=0)
-        list_matrix = np.concatenate(list_matrix, axis=0)
-        list_pos_mat = np.concatenate(list_pos_mat, axis=0)
-        list_alfa = np.concatenate(list_alfa, axis=0)
-
-        return list_matrix, list_pos_mat, list_alfa
+        return tf.convert_to_tensor(list_matrix), list_pos_mat, list_alfa
 
     def plot_matrices(self, model, num_to_pred, new_mat=False, interval=500):
         if new_mat:
