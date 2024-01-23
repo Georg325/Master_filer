@@ -37,32 +37,28 @@ def predict_neural_network(model, in_data):
     return model.predict(input_data)
 
 
-def block(model, row_len, col_len, filter_base, num):
-    return model
-
-
 def build_model(row_len, col_len, filter_base):
     model = Sequential()
 
-    # Apply Conv2D and Flatten to each time step
-    # block(model, row_len, col_len, filter_base, 1)
     model.add(Input(shape=(8, row_len, col_len, 1)))
     model.add(TimeDistributed(Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
-    model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
+    # model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
+
     model.add(TimeDistributed(Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='relu')))
-    model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
+    # model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
+
     model.add(TimeDistributed(Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='relu')))
     model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(TimeDistributed(Flatten()))
 
-    model.add(LSTM(row_len * col_len, activation='relu', return_sequences=True))
-    model.add(LSTM(round(row_len * col_len / 2), activation='relu'))
+    model.add(LSTM(128, activation='relu', return_sequences=True))
+    model.add(LSTM(128, activation='relu'))
 
     # Fully connected layer
-    model.add(Dense(8*row_len * col_len, activation='sigmoid'))
+    model.add(Dense(8 * row_len * col_len, activation='sigmoid'))
 
     # Reshape to the desired output shape
-    model.add(Reshape((8, row_len, col_len, 1), name='philip'))
+    model.add(Reshape((8, row_len, col_len, 1)))
     return model
 
 
@@ -82,6 +78,6 @@ def custom_loss(y_true, y_pred):
     mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
 
     # Combine the mean squared error with the custom penalty
-    combined_loss = mse_loss + 500 * tf.reduce_mean(penalty) + loss_1
+    combined_loss = mse_loss + 500 * tf.reduce_mean(penalty) + 10*loss_1
 
     return combined_loss

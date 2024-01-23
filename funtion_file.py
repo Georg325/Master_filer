@@ -53,6 +53,10 @@ class MatrixLister:
 
         pred = predict_neural_network(model, input_matrix)
 
+        input_matrix = np.concatenate(input_matrix, axis=0)
+        true_matrix = np.concatenate(true_matrix, axis=0)
+        pred = np.concatenate(pred, axis=0)
+
         predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
 
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
