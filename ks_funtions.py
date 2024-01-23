@@ -11,6 +11,7 @@ import numpy as np
 
 class DataGenerator(ks.utils.Sequence, ABC):
     """Generates data for Keras"""
+
     def __init__(self, mat_obj):
         """Initialization"""
         self.mat_obj = mat_obj
@@ -22,7 +23,7 @@ class DataGenerator(ks.utils.Sequence, ABC):
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate data
-        x, y, _ = self.mat_obj.create_matrix_in_list(2*512)
+        x, y, _ = self.mat_obj.create_matrix_in_list(2 * 512)
 
         return np.expand_dims(x, -1), np.expand_dims(y, -1)
 
@@ -32,30 +33,34 @@ def predict_neural_network(model, in_data):
     return model.predict(input_data)
 
 
+def block(model, row_len, col_len, filter_base, num):
+    return model
+
+
 def build_model(row_len, col_len, filter_base, num_neuron):
     model = Sequential()
 
     # Apply Conv2D and Flatten to each time step
-    model.add(Conv2D(filter_base, kernel_size=(1, 3), padding='same', activation='relu'))
-    model.add(Conv2D(filter_base, kernel_size=(3, 1), padding='same', activation='relu'))
-    model.add(Conv2D(filter_base*2, kernel_size=(2, 2), padding='same', activation='relu'))
-    model.add(MaxPooling2D(pool_size=2))
-    model.add(Conv2D(filter_base*4, kernel_size=(2, 2), padding='same', activation='tanh'))
-    model.add(MaxPooling2D(pool_size=2))
+    # block(model, row_len, col_len, filter_base, 1)
 
-    # Apply SimpleRNN to the output of Conv2D and Flatten
+    model.add(Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
     model.add(TimeDistributed(Flatten()))
-    model.add(Dense(row_len * col_len, activation='tanh'))
-    model.add(GRU(num_neuron, activation='relu', return_sequences=True))
-    model.add(Dropout(0.1))
-    model.add(GRU(num_neuron, activation='relu'))
-    model.add(Dense(num_neuron, activation='tanh'))
+
+    model.add(GRU(row_len * col_len, activation='relu'))
+    model.add(Reshape((row_len, col_len, 1), name='jeff'))
+
+    model.add(Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+    model.add(TimeDistributed(Flatten()))
+
+    model.add(GRU(row_len * col_len, activation='relu'))
 
     # Fully connected layer
     model.add(Dense(row_len * col_len, activation='sigmoid'))
 
     # Reshape to the desired output shape
-    model.add(Reshape((row_len, col_len, 1)))
+    model.add(Reshape((row_len, col_len, 1), name='philip'))
     return model
 
 
@@ -70,6 +75,6 @@ def custom_loss(y_true, y_pred):
     penalty = tf.where(mask, tf.math.square(tf.maximum(0.5 - y_pred, 0)), 0)
 
     # Combine the mean squared error with the custom penalty
-    combined_loss = mse_loss + 500*tf.reduce_mean(penalty)
+    combined_loss = mse_loss + 500 * tf.reduce_mean(penalty)
 
     return combined_loss

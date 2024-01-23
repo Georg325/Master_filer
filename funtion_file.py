@@ -1,12 +1,87 @@
 import numpy as np
 import scipy as sp
+import pandas as pd
 
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from matplotlib.animation import FuncAnimation
 
 import matplotlib.pyplot as plt
-import pandas as pd
+from matplotlib.animation import FuncAnimation
+
+from ks_funtions import predict_neural_network
+
+
+class MatrixLister:
+    def __init__(self, row_len, col_len, kernel_size, min_max_line_size, rotate, num_of_mat, num_per_mat):
+        self.row_len = row_len
+        self.col_len = col_len
+        self.kernel_size = kernel_size
+        self.min_max_line_size = min_max_line_size
+        self.rotate = rotate
+        self.num_of_mat = num_of_mat
+        self.num_per_mat = num_per_mat
+
+        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(32 * 8)
+
+    def create_matrix_in_list(self, batch_size):
+        list_matrix = []
+        list_pos_mat = []
+        list_alfa = []
+
+        for k in range(0, int(batch_size / self.num_per_mat)):
+            line_size = rotater((
+                np.random.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1),
+                np.random.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1)
+            ))
+
+            mat, pos, alf = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size, self.num_per_mat)
+
+            list_matrix.append(mat)
+            list_pos_mat.append(pos)
+            list_alfa.append(alf)
+
+        # Concatenate the lists along the first axis (axis=0)
+        list_matrix = np.concatenate(list_matrix, axis=0)
+        list_pos_mat = np.concatenate(list_pos_mat, axis=0)
+        list_alfa = np.concatenate(list_alfa, axis=0)
+
+        return list_matrix, list_pos_mat, list_alfa
+
+    def plot_matrices(self, model, num_to_pred, new_mat=False, interval=500):
+        if new_mat:
+            self.num_of_mat = num_to_pred
+            self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(
+                num_to_pred * self.num_per_mat)
+
+        input_matrix = np.array(self.con_matrix[:num_to_pred * self.num_per_mat])
+        true_matrix = self.line_pos_mat[:num_to_pred * self.num_per_mat]
+
+        pred = predict_neural_network(model, input_matrix)
+
+        predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
+
+        fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
+
+        def update(frame):
+            # Plot Input Matrix
+            im = [axes[0].imshow(input_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)]
+            axes[0].set_title('Input Matrix')
+
+            # Plot True Line Position Matrix
+            im.append(axes[1].imshow(true_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
+            axes[1].set_title('True Line Position Matrix')
+
+            # Plot Predicted Line Position Matrix
+            im.append(
+                axes[2].imshow(predicted_line_pos_mat[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
+            axes[2].set_title('Predicted Line Position Matrix')
+
+            return im
+
+        animation = FuncAnimation(fig, update, frames=len(input_matrix), interval=interval, repeat=False, blit=True)
+
+        plt.tight_layout()
+        return animation
 
 
 def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
@@ -74,7 +149,7 @@ def plot_training_history(training_history_object, list_of_metrics=None):
     train_keys = list_of_metrics
     valid_keys = ['val_' + key for key in train_keys]
     nr_plots = len(train_keys)
-    fig, ax = plt.subplots(1,nr_plots,figsize=(5*nr_plots,4))
+    fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
     for i in range(len(train_keys)):
         ax[i].plot(np.array(trainHistDF[train_keys[i]]), label='Training')
         ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
@@ -84,7 +159,6 @@ def plot_training_history(training_history_object, list_of_metrics=None):
         ax[i].legend()
     fig.tight_layout()
     plt.show()
-
 
 
 def rotater(line):
@@ -107,5 +181,3 @@ def plot(matrix, interval=200):
     plt.show(block=False)
     plt.show()
     return animation
-
-
