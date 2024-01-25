@@ -12,7 +12,8 @@ from ks_funtions import predict_neural_network
 
 
 class MatrixLister:
-    def __init__(self, row_len, col_len, kernel_size, min_max_line_size, rotate, num_of_mat, num_per_mat):
+    def __init__(self, row_len, col_len, kernel_size, min_max_line_size,
+                 rotate, num_of_mat, num_per_mat, new_background):
         self.row_len = row_len
         self.col_len = col_len
         self.kernel_size = kernel_size
@@ -20,6 +21,7 @@ class MatrixLister:
         self.rotate = rotate
         self.num_of_mat = num_of_mat
         self.num_per_mat = num_per_mat
+        self.new_background = new_background
 
         self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(32 * 8)
 
@@ -34,7 +36,8 @@ class MatrixLister:
                 np.random.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1)
             ))
 
-            mat, pos, alf = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size, self.num_per_mat)
+            mat, pos, alf = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size, self.num_per_mat,
+                                         new_background=self.new_background)
 
             list_matrix.append(mat)
             list_pos_mat.append(pos)
@@ -83,7 +86,7 @@ class MatrixLister:
         return animation
 
 
-def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
+def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
     cols = cols or rows
 
     # smooth
@@ -102,6 +105,9 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
     line_pos_mat = []
 
     for i in range(num_per_mat):
+        if new_background:
+            kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
+            smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
