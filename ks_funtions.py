@@ -81,3 +81,29 @@ def custom_loss(y_true, y_pred):
     combined_loss = mse_loss + 500 * tf.reduce_mean(penalty) + 10*loss_1
 
     return combined_loss
+
+
+def custom_weighted_loss(y_true, y_pred):
+    """
+    Custom loss function with emphasis on errors for values that are 1 in y_true.
+
+    Parameters:
+    - y_true: True labels
+    - y_pred: Predicted labels
+
+    Returns:
+    - Weighted binary cross-entropy loss
+    """
+    # Calculate fill factor (proportion of 1s in y_true)
+    fill_factor = K.sum(y_true) / K.cast(K.prod(K.shape(y_true)), K.floatx())
+
+    # Calculate binary cross-entropy loss
+    binary_loss = K.binary_crossentropy(y_true, y_pred)
+
+    # Apply weights based on fill factor
+    weighted_binary_loss = y_true * (fill_factor * binary_loss) + (1 - y_true) * binary_loss
+
+    # Calculate mean loss over all elements
+    loss = K.mean(weighted_binary_loss)
+
+    return loss
