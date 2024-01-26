@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sp
 import pandas as pd
+import random as rd
 
 import tensorflow as tf
 from tensorflow.keras import backend as K
@@ -9,6 +10,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 from ks_funtions import predict_neural_network
+
+rng = rd.SystemRandom()
 
 
 class MatrixLister:
@@ -30,10 +33,10 @@ class MatrixLister:
         list_pos_mat = []
         list_alfa = []
 
-        for k in range(0, int(batch_size / self.num_per_mat)):
+        for k in range(0, int(batch_size)):
             line_size = rotater((
-                np.random.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1),
-                np.random.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1)
+                rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
+                rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
             ))
 
             mat, pos, alf = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size, self.num_per_mat,
@@ -94,8 +97,8 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
     smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
     # line_start
-    line_start_position = (np.random.randint(low=0, high=rows - line_size[0] + 1),
-                           np.random.randint(low=0, high=cols - line_size[1] + 1))
+    line_start_position = (rng.randint(0, rows - line_size[0]),
+                           rng.randint(0, cols - line_size[1]))
 
     # alfa
     alfa = np.linspace(1, 0, num=num_per_mat)
@@ -167,7 +170,7 @@ def plot_training_history(training_history_object, list_of_metrics=None):
 
 
 def rotater(line):
-    if np.random.random() < 0.5:
+    if rng.randint(0, 1):
         return line[::-1]
     return line
 

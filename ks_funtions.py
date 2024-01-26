@@ -27,7 +27,7 @@ class DataGenerator(ks.utils.Sequence, ABC):
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate data
-        x, y, _ = self.mat_obj.create_matrix_in_list(self.num_of_mat * self.fades_per_mat)
+        x, y, _ = self.mat_obj.create_matrix_in_list(self.num_of_mat)
 
         return np.expand_dims(x, -1), np.expand_dims(y, -1)
 
@@ -37,10 +37,10 @@ def predict_neural_network(model, in_data):
     return model.predict(input_data)
 
 
-def build_model(row_len, col_len, filter_base):
+def build_model(row_len, col_len, filter_base, pic_per_mat):
     model = Sequential()
 
-    model.add(Input(shape=(8, row_len, col_len, 1)))
+    model.add(Input(shape=(pic_per_mat, row_len, col_len, 1)))
     model.add(TimeDistributed(Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
     # model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
 
@@ -55,10 +55,10 @@ def build_model(row_len, col_len, filter_base):
     model.add(LSTM(128, activation='relu'))
 
     # Fully connected layer
-    model.add(Dense(8 * row_len * col_len, activation='sigmoid'))
+    model.add(Dense(pic_per_mat * row_len * col_len, activation='sigmoid'))
 
     # Reshape to the desired output shape
-    model.add(Reshape((8, row_len, col_len, 1)))
+    model.add(Reshape((pic_per_mat, row_len, col_len, 1)))
     return model
 
 
