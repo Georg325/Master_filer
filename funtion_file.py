@@ -26,14 +26,14 @@ class MatrixLister:
         self.num_per_mat = num_per_mat
         self.new_background = new_background
 
-        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(32 * 8)
+        self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
 
-    def create_matrix_in_list(self, batch_size):
+    def create_matrix_in_list(self, numb_of_time_series):
         list_matrix = []
         list_pos_mat = []
         list_alfa = []
 
-        for k in range(0, int(batch_size)):
+        for k in range(0, numb_of_time_series):
             line_size = rotater((
                 rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
                 rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
@@ -114,7 +114,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-        line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+                         line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
 
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
@@ -123,7 +123,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
         else:
             matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-            line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
@@ -177,7 +177,7 @@ def rotater(line):
     return line
 
 
-def plot(matrix, interval=200):
+def plots(matrix, interval=200):
     fig, ax = plt.subplots()
 
     def update(frame):
