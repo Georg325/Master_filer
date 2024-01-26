@@ -83,27 +83,26 @@ def custom_loss(y_true, y_pred):
     return combined_loss
 
 
-def custom_weighted_loss(y_true, y_pred):
+def custom_weighted_loss(y_true, y_pred, weight_factor=15.0):
     """
-    Custom loss function with emphasis on errors for values that are 1 in y_true.
+    Custom loss function with emphasis on errors for values that are 1 in y_true using mean squared error.
 
     Parameters:
     - y_true: True labels
     - y_pred: Predicted labels
+    - weight_factor: Weighting factor for positive class (default is 2.0)
 
     Returns:
-    - Weighted binary cross-entropy loss
+    - Weighted mean squared error loss
     """
-    # Calculate fill factor (proportion of 1s in y_true)
-    fill_factor = K.sum(y_true) / K.cast(K.prod(K.shape(y_true)), K.floatx())
+    # Calculate squared errors
+    squared_errors = K.square(y_true - y_pred)
 
-    # Calculate binary cross-entropy loss
-    binary_loss = K.binary_crossentropy(y_true, y_pred)
-
-    # Apply weights based on fill factor
-    weighted_binary_loss = y_true * (fill_factor * binary_loss) + (1 - y_true) * binary_loss
+    # Apply weights to positive class
+    weighted_squared_errors = y_true * (weight_factor * squared_errors) + (1 - y_true) * squared_errors
 
     # Calculate mean loss over all elements
-    loss = K.mean(weighted_binary_loss)
+    loss = K.mean(weighted_squared_errors)
 
     return loss
+

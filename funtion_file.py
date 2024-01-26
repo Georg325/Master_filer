@@ -140,7 +140,7 @@ def F1_score(y_true, y_pred):
     return 2 * ((precision * recall) / (precision + recall + K.epsilon()))
 
 
-def plot_training_history(training_history_object, list_of_metrics=None):
+def plot_training_history(training_history_object, list_of_metrics=None, with_val=True):
     """
     Input:
         training_history_object:: Object returned by model.fit() function in keras
@@ -155,12 +155,14 @@ def plot_training_history(training_history_object, list_of_metrics=None):
     trainHistDF = pd.DataFrame(history_dict)
     # trainHistDF.head()
     train_keys = list_of_metrics
-    valid_keys = ['val_' + key for key in train_keys]
+    if with_val:
+        valid_keys = ['val_' + key for key in train_keys]
     nr_plots = len(train_keys)
     fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
     for i in range(len(train_keys)):
         ax[i].plot(np.array(trainHistDF[train_keys[i]]), label='Training')
-        ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
+        if with_val:
+            ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
         ax[i].set_xlabel('Epoch')
         ax[i].set_title(train_keys[i])
         ax[i].grid('on')
