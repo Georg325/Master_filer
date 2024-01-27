@@ -48,10 +48,10 @@ class MatrixLister:
 
         return tf.convert_to_tensor(list_matrix), list_pos_mat, list_alfa
 
-    def plot_matrices(self, model, num_to_pred, new_mat=False, interval=500):
-        if new_mat:
-            self.num_of_mat = num_to_pred
-            self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(
+    def plot_matrices(self, model, num_to_pred, interval=500):
+
+        self.num_of_mat = num_to_pred
+        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(
                 num_to_pred * self.num_per_mat)
 
         input_matrix = np.array(self.con_matrix[:num_to_pred * self.num_per_mat])
