@@ -1,12 +1,109 @@
 import numpy as np
 import scipy as sp
+import pandas as pd
+import random as rd
+
 import tensorflow as tf
 from tensorflow.keras import backend as K
+
 import matplotlib.pyplot as plt
-import pandas as pd
+from matplotlib.animation import FuncAnimation
+
+from ks_funtions import predict_neural_network
+
+rng = rd.SystemRandom()
 
 
-def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3):
+class MatrixLister:
+    def __init__(self, row_len, col_len, kernel_size, min_max_line_size,
+                 rotate, num_of_mat, num_per_mat, new_background):
+        self.row_len = row_len
+        self.col_len = col_len
+        self.kernel_size = kernel_size
+        self.min_max_line_size = min_max_line_size
+        self.rotate = rotate
+        self.num_of_mat = num_of_mat
+        self.num_per_mat = num_per_mat
+        self.new_background = new_background
+
+        self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
+
+    def create_matrix_in_list(self, numb_of_time_series):
+        list_matrix = []
+        list_pos_mat = []
+        list_alfa = []
+
+        for k in range(0, numb_of_time_series):
+            line_size = rotater((
+                rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
+                rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
+            ))
+
+            mat, pos, alf = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size, self.num_per_mat,
+                                         new_background=self.new_background)
+
+            list_matrix.append(mat)
+            list_pos_mat.append(pos)
+            list_alfa.append(alf)
+
+        return tf.convert_to_tensor(list_matrix), list_pos_mat, list_alfa
+
+    def plot_matrices(self, model, num_to_pred, interval=500):
+
+        self.num_of_mat = num_to_pred
+        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(
+            num_to_pred * self.num_per_mat)
+
+        input_matrix = np.array(self.con_matrix[:num_to_pred * self.num_per_mat])
+        true_matrix = self.line_pos_mat[:num_to_pred * self.num_per_mat]
+
+        pred = predict_neural_network(model, input_matrix)
+
+        input_matrix = np.concatenate(input_matrix, axis=0)
+        true_matrix = np.concatenate(true_matrix, axis=0)
+        pred = np.concatenate(pred, axis=0)
+
+        predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
+
+        fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
+
+        def update(frame):
+            # Plot Input Matrix
+            im = [axes[0].imshow(input_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)]
+            axes[0].set_title('Input Matrix')
+
+            # Plot True Line Position Matrix
+            im.append(axes[1].imshow(true_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
+            axes[1].set_title('True Line Position Matrix')
+
+            # Plot Predicted Line Position Matrix
+            im.append(
+                axes[2].imshow(predicted_line_pos_mat[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
+            axes[2].set_title('Predicted Line Position Matrix')
+
+            return im
+
+        animation = FuncAnimation(fig, update, frames=len(input_matrix), interval=interval, repeat=False, blit=True)
+
+        plt.tight_layout()
+        return animation
+
+    def unique_lines(self):
+        unique_lines = 0
+        for i in range(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1):
+            for j in range(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1):
+                possible_row = self.row_len - i
+                possible_col = self.col_len - j
+                unique_lines += possible_row * possible_col
+
+                possible_row_r = self.row_len - j
+                possible_col_r = self.col_len - i
+                unique_lines += possible_row_r * possible_col_r
+
+        print('Possible lines: ', unique_lines)
+
+
+def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
     cols = cols or rows
 
     # smooth
@@ -14,8 +111,8 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
     smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
     # line_start
-    line_start_position = (np.random.randint(low=0, high=rows - line_size[0] + 1),
-                           np.random.randint(low=0, high=cols - line_size[1] + 1))
+    line_start_position = (rng.randint(0, rows - line_size[0]),
+                           rng.randint(0, cols - line_size[1]))
 
     # alfa
     alfa = np.linspace(1, 0, num=num_per_mat)
@@ -25,6 +122,9 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
     line_pos_mat = []
 
     for i in range(num_per_mat):
+        if new_background:
+            kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
+            smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
@@ -54,7 +154,7 @@ def F1_score(y_true, y_pred):
     return 2 * ((precision * recall) / (precision + recall + K.epsilon()))
 
 
-def plot_training_history(training_history_object, list_of_metrics=None):
+def plot_training_history(training_history_object, list_of_metrics=None, with_val=True):
     """
     Input:
         training_history_object:: Object returned by model.fit() function in keras
@@ -63,34 +163,55 @@ def plot_training_history(training_history_object, list_of_metrics=None):
                                   in the training history object. By Default it will
                                   plot all of them in individual subplots.
     """
+
+    valid_keys = None
     history_dict = training_history_object.history
+
     if list_of_metrics is None:
         list_of_metrics = [key for key in list(history_dict.keys()) if 'val_' not in key]
+
     trainHistDF = pd.DataFrame(history_dict)
     # trainHistDF.head()
     train_keys = list_of_metrics
-    valid_keys = ['val_' + key for key in train_keys]
+
+    if with_val:
+        valid_keys = ['val_' + key for key in train_keys]
+
     nr_plots = len(train_keys)
-    fig, ax = plt.subplots(1,nr_plots,figsize=(5*nr_plots,4))
+    fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
+
     for i in range(len(train_keys)):
         ax[i].plot(np.array(trainHistDF[train_keys[i]]), label='Training')
-        ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
+
+        if with_val:
+            ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
+
         ax[i].set_xlabel('Epoch')
         ax[i].set_title(train_keys[i])
         ax[i].grid('on')
         ax[i].legend()
+
     fig.tight_layout()
     plt.show()
 
 
-if __name__ == '__main__':
-    matrix_fade, line_pos_mat_d, alfa_d = matrix_maker(2, 2, (2, 2), (1, 2), 4)
+def rotater(line):
+    if rng.randint(0, 1):
+        return line[::-1]
+    return line
 
-    print(alfa_d)
-    print()
-    print(line_pos_mat_d.shape)
-    print(matrix_fade.shape)
 
-    for mat in line_pos_mat_d:
-        print(mat)
-        print()
+def plots(matrix, interval=200):
+    fig, ax = plt.subplots()
+
+    def update(frame):
+        ax.clear()
+        im = ax.imshow(matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+
+        return [im]
+
+    animation = FuncAnimation(fig, update, frames=len(matrix), interval=interval, repeat=False, blit=True)
+    plt.tight_layout()
+    plt.show(block=False)
+    plt.show()
+    return animation
