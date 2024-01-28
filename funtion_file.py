@@ -52,7 +52,7 @@ class MatrixLister:
 
         self.num_of_mat = num_to_pred
         self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(
-                num_to_pred * self.num_per_mat)
+            num_to_pred * self.num_per_mat)
 
         input_matrix = np.array(self.con_matrix[:num_to_pred * self.num_per_mat])
         true_matrix = self.line_pos_mat[:num_to_pred * self.num_per_mat]
@@ -88,6 +88,20 @@ class MatrixLister:
         plt.tight_layout()
         return animation
 
+    def unique_lines(self):
+        unique_lines = 0
+        for i in range(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1):
+            for j in range(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1):
+                possible_row = self.row_len - i
+                possible_col = self.col_len - j
+                unique_lines += possible_row * possible_col
+
+                possible_row_r = self.row_len - j
+                possible_col_r = self.col_len - i
+                unique_lines += possible_row_r * possible_col_r
+
+        print('Possible lines: ', unique_lines)
+
 
 def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
     cols = cols or rows
@@ -114,7 +128,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-                         line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+        line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
 
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
@@ -123,7 +137,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
         else:
             matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+            line_start_position[1]:line_start_position[1] + line_size[1]] = 0
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
@@ -149,24 +163,34 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
                                   in the training history object. By Default it will
                                   plot all of them in individual subplots.
     """
+
+    valid_keys = None
     history_dict = training_history_object.history
+
     if list_of_metrics is None:
         list_of_metrics = [key for key in list(history_dict.keys()) if 'val_' not in key]
+
     trainHistDF = pd.DataFrame(history_dict)
     # trainHistDF.head()
     train_keys = list_of_metrics
+
     if with_val:
         valid_keys = ['val_' + key for key in train_keys]
+
     nr_plots = len(train_keys)
     fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
+
     for i in range(len(train_keys)):
         ax[i].plot(np.array(trainHistDF[train_keys[i]]), label='Training')
+
         if with_val:
             ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
+
         ax[i].set_xlabel('Epoch')
         ax[i].set_title(train_keys[i])
         ax[i].grid('on')
         ax[i].legend()
+
     fig.tight_layout()
     plt.show()
 
