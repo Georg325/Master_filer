@@ -16,7 +16,7 @@ rng = rd.SystemRandom()
 
 class MatrixLister:
     def __init__(self, row_len, col_len, kernel_size, min_max_line_size,
-                 rotate, num_of_mat, num_per_mat, new_background):
+                 rotate, num_of_mat, num_per_mat, new_background, triangle):
         self.row_len = row_len
         self.col_len = col_len
         self.kernel_size = kernel_size
@@ -25,6 +25,7 @@ class MatrixLister:
         self.num_of_mat = num_of_mat
         self.num_per_mat = num_per_mat
         self.new_background = new_background
+        self.triangle = triangle
 
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
 
@@ -38,10 +39,15 @@ class MatrixLister:
                 rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
                 rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
             ))
-
-            mat, pos, alf = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size, self.num_per_mat,
-                                         new_background=self.new_background)
-
+            if self.triangle:
+                sfb = matrix_triangle_maker(self.row_len, self.col_len, self.kernel_size, line_size,
+                                            self.num_per_mat,
+                                            new_background=self.new_background)
+            else:
+                sfb = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size,
+                                   self.num_per_mat,
+                                   new_background=self.new_background)
+            mat, pos, alf = sfb
             list_matrix.append(mat)
             list_pos_mat.append(pos)
             list_alfa.append(alf)
@@ -144,6 +150,64 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
+def matrix_triangle_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False,
+                          alternative=True):
+    cols = cols or rows
+
+    # smooth
+    kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
+    smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
+
+    # line_start
+
+    a, b, c = ((rng.randint(0, rows - 1), rng.randint(0, cols - 1)),
+               (rng.randint(0, rows - 1), rng.randint(0, cols - 1)),
+               (rng.randint(0, rows - 1), rng.randint(0, cols - 1)))
+    coords = set(full_triangle(a, b, c))
+    arr = np.array(rg.render_at((rows, cols), coords).astype(int))
+    if alternative:
+        arr = np.array([[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                        [0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0],
+                        [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0],
+                        [0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0],
+                        # [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0],
+                        [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0],
+                        [0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0],
+                        [0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+                        [0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],
+                        [0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0],
+                        [0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0],
+                        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]])
+    # alfa
+    alfa = np.linspace(1, 0, num=num_per_mat)
+
+    # matrix_fade
+    matrix_line_fade = []
+    line_pos_mat = []
+
+    for i in range(num_per_mat):
+        if new_background:
+            kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
+            smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
+
+        matrix_with_line = np.ones((rows, cols))
+        fish = arr * (1 - alfa[i])
+
+        matrix_line_fade.append(smooth_matrix * (matrix_with_line - fish))
+
+        if alfa[i] == 1:
+            line_pos_mat.append(np.zeros((rows, cols)))
+
+        else:
+            line_pos_mat.append(arr)
+
+    return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
+
+
 def F1_score(y_true, y_pred):
     TP = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
     P = K.sum(K.round(K.clip(y_true, 0, 1)))
@@ -215,3 +279,12 @@ def plots(matrix, interval=200):
     plt.show(block=False)
     plt.show()
     return animation
+
+
+import raster_geometry as rg
+
+
+def full_triangle(a, b, c):
+    ab = rg.bresenham_line(a, b, endpoint=True)
+    for x in set(ab):
+        yield from rg.bresenham_line(c, x, endpoint=True)
