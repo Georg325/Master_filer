@@ -12,7 +12,7 @@ from ks_funtions import *
 import raster_geometry as rg
 
 rng = rd.SystemRandom()
-
+from tensorflow.keras.callbacks import EarlyStopping
 
 class MatrixLister:
     def __init__(self, mat_size, kernel_size, min_max_line_size,
@@ -111,6 +111,9 @@ class MatrixLister:
         checkpoint_filepath = 'weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
+
+        model_early_stopp_callback = EarlyStopping(monitor='loss', patience=8, min_delta=0.001, mode='max')
+
         model = build_model(self.mat_size, cnn_size, rnn_size, self.fades_per_mat)
         optimizer = ks.optimizers.Adam()
         model.compile(optimizer=optimizer, loss=custom_weighted_loss,
@@ -126,7 +129,7 @@ class MatrixLister:
             else:
                 print('Did not find any weights')
 
-        return model, model_checkpoint_callback
+        return model, [model_checkpoint_callback, model_early_stopp_callback]
 
     def init_generator(self, batch_size, num_batch):
         return DataGenerator(self, batch_size, num_batch)
