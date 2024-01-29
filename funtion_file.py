@@ -4,30 +4,34 @@ import pandas as pd
 import random as rd
 
 import tensorflow as tf
-from tensorflow.keras import backend as K
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from ks_funtions import predict_neural_network
+from ks_funtions import predict_neural_network, build_model, DataGenerator
+import raster_geometry as rg
+
 
 rng = rd.SystemRandom()
 
 
 class MatrixLister:
     def __init__(self, row_len, col_len, kernel_size, min_max_line_size,
-                 rotate, num_of_mat, num_per_mat, new_background, triangle):
+                 rotate, fades_per_mat, new_background, triangle):
         self.row_len = row_len
         self.col_len = col_len
         self.kernel_size = kernel_size
         self.min_max_line_size = min_max_line_size
         self.rotate = rotate
-        self.num_of_mat = num_of_mat
-        self.num_per_mat = num_per_mat
+        self.fades_per_mat = fades_per_mat
         self.new_background = new_background
         self.triangle = triangle
 
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
+
+    @classmethod
+    def from_dict(cls, params):
+        return cls(**params)
 
     def create_matrix_in_list(self, numb_of_time_series):
         list_matrix = []
@@ -41,11 +45,11 @@ class MatrixLister:
             ))
             if self.triangle:
                 sfb = matrix_triangle_maker(self.row_len, self.col_len, self.kernel_size, line_size,
-                                            self.num_per_mat,
+                                            self.fades_per_mat,
                                             new_background=self.new_background)
             else:
                 sfb = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size,
-                                   self.num_per_mat,
+                                   self.fades_per_mat,
                                    new_background=self.new_background)
             mat, pos, alf = sfb
             list_matrix.append(mat)
@@ -55,13 +59,10 @@ class MatrixLister:
         return tf.convert_to_tensor(list_matrix), list_pos_mat, list_alfa
 
     def plot_matrices(self, model, num_to_pred, interval=500):
+        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(num_to_pred)
 
-        self.num_of_mat = num_to_pred
-        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(
-            num_to_pred * self.num_per_mat)
-
-        input_matrix = np.array(self.con_matrix[:num_to_pred * self.num_per_mat])
-        true_matrix = self.line_pos_mat[:num_to_pred * self.num_per_mat]
+        input_matrix = np.array(self.con_matrix[:num_to_pred * self.fades_per_mat])
+        true_matrix = self.line_pos_mat[:num_to_pred * self.fades_per_mat]
 
         pred = predict_neural_network(model, input_matrix)
 
@@ -107,6 +108,12 @@ class MatrixLister:
                 unique_lines += possible_row_r * possible_col_r
 
         print('Possible lines: ', unique_lines)
+
+    def init_model(self, cnn_size, rnn_size):
+        return build_model(self.row_len, self.col_len, cnn_size, rnn_size, self.fades_per_mat)
+
+    def init_generator(self, batch_size, num_batch):
+        return DataGenerator(self, batch_size, num_batch)
 
 
 def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -208,16 +215,6 @@ def matrix_triangle_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2),
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def F1_score(y_true, y_pred):
-    TP = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    P = K.sum(K.round(K.clip(y_true, 0, 1)))
-    recall = TP / (P + K.epsilon())
-
-    Pred_P = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    precision = TP / (Pred_P + K.epsilon())
-    return 2 * ((precision * recall) / (precision + recall + K.epsilon()))
-
-
 def plot_training_history(training_history_object, list_of_metrics=None, with_val=True):
     """
     Input:
@@ -279,9 +276,6 @@ def plots(matrix, interval=200):
     plt.show(block=False)
     plt.show()
     return animation
-
-
-import raster_geometry as rg
 
 
 def full_triangle(a, b, c):

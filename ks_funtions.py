@@ -1,10 +1,10 @@
 from abc import ABC
 
 from keras.models import Sequential
-from keras.layers import Dense, GRU, Conv2D, Flatten, MaxPooling2D, Dropout, Reshape, TimeDistributed, Input, LSTM
+from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, Reshape, TimeDistributed, Input, LSTM
 
 import tensorflow as tf
-from keras import backend as K
+from keras import backend as k_back
 import keras as ks
 
 import numpy as np
@@ -13,22 +13,20 @@ import numpy as np
 class DataGenerator(ks.utils.Sequence, ABC):
     """Generates data for Keras"""
 
-    def __init__(self, mat_obj, batch_size=32, fades_per_mat=8, num_of_mat=100):
+    def __init__(self, mat_obj, batch_size=128, num_batch=2):
         """Initialization"""
         self.mat_obj = mat_obj
         self.batch_size = batch_size
-        self.fades_per_mat = fades_per_mat
-        self.num_of_mat = num_of_mat
+        self.num_batch = num_batch
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        return round(self.num_of_mat * self.fades_per_mat / self.batch_size)
+        return self.num_batch
 
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate data
-        x, y, _ = self.mat_obj.create_matrix_in_list(self.num_of_mat)
-
+        x, y, _ = self.mat_obj.create_matrix_in_list(self.batch_size)
         return np.expand_dims(x, -1), np.expand_dims(y, -1)
 
 
@@ -37,7 +35,7 @@ def predict_neural_network(model, in_data):
     return model.predict(input_data)
 
 
-def build_model(row_len, col_len, filter_base, pic_per_mat):
+def build_model(row_len, col_len, filter_base, neuron_base, pic_per_mat):
     model = Sequential()
 
     model.add(Input(shape=(pic_per_mat, row_len, col_len, 1)))
@@ -51,8 +49,8 @@ def build_model(row_len, col_len, filter_base, pic_per_mat):
     model.add(TimeDistributed(MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(TimeDistributed(Flatten()))
 
-    model.add(LSTM(128, activation='relu', return_sequences=True))
-    model.add(LSTM(128, activation='relu'))
+    model.add(LSTM(neuron_base, activation='relu', return_sequences=True))
+    model.add(LSTM(neuron_base, activation='relu'))
 
     # Fully connected layer
     model.add(Dense(pic_per_mat * row_len * col_len, activation='sigmoid'))
@@ -63,9 +61,9 @@ def build_model(row_len, col_len, filter_base, pic_per_mat):
 
 
 def custom_loss(y_true, y_pred):
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    precision = true_positives / (predicted_positives + K.epsilon())
+    true_positives = k_back.sum(k_back.round(k_back.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = k_back.sum(k_back.round(k_back.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + k_back.epsilon())
 
     # Calculate 1 - Precision as the loss
     loss_1 = 1 - precision
@@ -96,13 +94,12 @@ def custom_weighted_loss(y_true, y_pred, weight_factor=15.0):
     - Weighted mean squared error loss
     """
     # Calculate squared errors
-    squared_errors = K.square(y_true - y_pred)
+    squared_errors = k_back.square(y_true - y_pred)
 
     # Apply weights to positive class
     weighted_squared_errors = y_true * (weight_factor * squared_errors) + (1 - y_true) * squared_errors
 
     # Calculate mean loss over all elements
-    loss = K.mean(weighted_squared_errors)
+    loss = k_back.mean(weighted_squared_errors)
 
     return loss
-
