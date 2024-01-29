@@ -173,8 +173,7 @@ def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, 
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def matrix_triangle_maker(mat_size, kernel_size=(2, 2), num_per_mat=3, new_background=False,
-                          alternative=False):
+def matrix_triangle_maker(mat_size, kernel_size=(2, 2), num_per_mat=3, new_background=False, alternative=False):
     rows, cols = mat_size
 
     # smooth
