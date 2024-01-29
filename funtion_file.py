@@ -1,25 +1,23 @@
-import numpy as np
+from os import path
 import scipy as sp
 import pandas as pd
 import random as rd
 
-import tensorflow as tf
+from tensorflow.keras.metrics import Precision, Recall
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from ks_funtions import predict_neural_network, build_model, DataGenerator
+from ks_funtions import *
 import raster_geometry as rg
-
 
 rng = rd.SystemRandom()
 
 
 class MatrixLister:
-    def __init__(self, row_len, col_len, kernel_size, min_max_line_size,
+    def __init__(self, mat_size, kernel_size, min_max_line_size,
                  rotate, fades_per_mat, new_background, triangle):
-        self.row_len = row_len
-        self.col_len = col_len
+        self.mat_size = mat_size
         self.kernel_size = kernel_size
         self.min_max_line_size = min_max_line_size
         self.rotate = rotate
@@ -44,11 +42,11 @@ class MatrixLister:
                 rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
             ))
             if self.triangle:
-                sfb = matrix_triangle_maker(self.row_len, self.col_len, self.kernel_size, line_size,
+                sfb = matrix_triangle_maker(self.mat_size, self.kernel_size,
                                             self.fades_per_mat,
                                             new_background=self.new_background)
             else:
-                sfb = matrix_maker(self.row_len, self.col_len, self.kernel_size, line_size,
+                sfb = matrix_maker(self.mat_size, self.kernel_size, line_size,
                                    self.fades_per_mat,
                                    new_background=self.new_background)
             mat, pos, alf = sfb
@@ -99,25 +97,43 @@ class MatrixLister:
         unique_lines = 0
         for i in range(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1):
             for j in range(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1):
-                possible_row = self.row_len - i
-                possible_col = self.col_len - j
+                possible_row = self.mat_size[0] - i
+                possible_col = self.mat_size[1] - j
                 unique_lines += possible_row * possible_col
 
-                possible_row_r = self.row_len - j
-                possible_col_r = self.col_len - i
+                possible_row_r = self.mat_size[0] - j
+                possible_col_r = self.mat_size[1] - i
                 unique_lines += possible_row_r * possible_col_r
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size):
-        return build_model(self.row_len, self.col_len, cnn_size, rnn_size, self.fades_per_mat)
+    def init_model(self, cnn_size, rnn_size, old_weights=True):
+        checkpoint_filepath = 'weights.h5'
+        model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
+                                                                 monitor='loss', mode='min', save_best_only=True)
+        model = build_model(self.mat_size, cnn_size, rnn_size, self.fades_per_mat)
+        optimizer = ks.optimizers.Adam()
+        model.compile(optimizer=optimizer, loss=custom_weighted_loss,
+                      metrics=[Precision(name='precision'), Recall(name='recall')])
+
+        if old_weights:
+            if path.exists('weights_good_triangle.h5'):
+                model.load_weights('weights_good_triangle.h5')
+                print('Loaded triangle weights')
+            elif path.exists('weights_good.h5'):
+                model.load_weights('weights_good.h5')
+                print('Loaded line weights')
+            else:
+                print('Did not find any weights')
+
+        return model, model_checkpoint_callback
 
     def init_generator(self, batch_size, num_batch):
         return DataGenerator(self, batch_size, num_batch)
 
 
-def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
-    cols = cols or rows
+def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
+    rows, cols = mat_size
 
     # smooth
     kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
@@ -141,7 +157,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-        line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+                         line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
 
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
@@ -150,16 +166,16 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
         else:
             matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-            line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def matrix_triangle_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False,
+def matrix_triangle_maker(mat_size, kernel_size=(2, 2), num_per_mat=3, new_background=False,
                           alternative=False):
-    cols = cols or rows
+    rows, cols = mat_size
 
     # smooth
     kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
@@ -221,7 +237,7 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
         training_history_object:: Object returned by model.fit() function in keras
         list_of_metrics        :: A list of metrics to be plotted. Use if you only
                                   want to plot a subset of the total set of metrics
-                                  in the training history object. By Default it will
+                                  in the training history object. By default, it will
                                   plot all of them in individual subplots.
     """
 
@@ -231,8 +247,8 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
     if list_of_metrics is None:
         list_of_metrics = [key for key in list(history_dict.keys()) if 'val_' not in key]
 
-    trainHistDF = pd.DataFrame(history_dict)
-    # trainHistDF.head()
+    train_hist_df = pd.DataFrame(history_dict)
+    # train_hist_df.head()
     train_keys = list_of_metrics
 
     if with_val:
@@ -242,10 +258,10 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
     fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
 
     for i in range(len(train_keys)):
-        ax[i].plot(np.array(trainHistDF[train_keys[i]]), label='Training')
+        ax[i].plot(np.array(train_hist_df[train_keys[i]]), label='Training')
 
         if with_val:
-            ax[i].plot(np.array(trainHistDF[valid_keys[i]]), label='Validation')
+            ax[i].plot(np.array(train_hist_df[valid_keys[i]]), label='Validation')
 
         ax[i].set_xlabel('Epoch')
         ax[i].set_title(train_keys[i])
