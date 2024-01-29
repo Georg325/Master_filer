@@ -151,7 +151,7 @@ def matrix_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_
 
 
 def matrix_triangle_maker(rows, cols=None, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False,
-                          alternative=True):
+                          alternative=False):
     cols = cols or rows
 
     # smooth
