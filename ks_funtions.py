@@ -50,10 +50,10 @@ def build_model(mat_size, filter_base, neuron_base, pic_per_mat):
     model.add(TimeDistributed(Flatten()))
 
     model.add(LSTM(neuron_base, activation='relu', return_sequences=True))
-    model.add(LSTM(neuron_base, activation='relu'))
+    model.add(LSTM(neuron_base, activation='relu', return_sequences=True))
 
     # Fully connected layer
-    model.add(Dense(pic_per_mat * mat_size[0] * mat_size[1], activation='sigmoid'))
+    model.add(TimeDistributed(Dense(mat_size[0]*mat_size[1], activation='sigmoid')))
 
     # Reshape to the desired output shape
     model.add(Reshape((pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -81,7 +81,7 @@ def custom_loss(y_true, y_pred):
     return combined_loss
 
 
-def custom_weighted_loss(y_true, y_pred, weight_factor=10.0):
+def custom_weighted_loss(y_true, y_pred, weight_factor=5.0):
     """
     Custom loss function with emphasis on errors for values that are 1 in y_true using mean squared error.
 
@@ -93,11 +93,13 @@ def custom_weighted_loss(y_true, y_pred, weight_factor=10.0):
     Returns:
     - Weighted mean squared error loss
     """
+
     # Calculate squared errors
-    squared_errors = k_back.square(y_true - y_pred)
+    squared_errors = k_back.square(tf.cast(y_true, dtype=tf.float32) - y_pred)
 
     # Apply weights to positive class
-    weighted_squared_errors = y_true * (weight_factor * squared_errors) + (1 - y_true) * squared_errors
+    weighted_squared_errors = (tf.cast(y_true, dtype=tf.float32) * (weight_factor * squared_errors)
+                               + tf.cast((1 - y_true), dtype=tf.float32) * squared_errors)
 
     # Calculate mean loss over all elements
     loss = k_back.mean(weighted_squared_errors)

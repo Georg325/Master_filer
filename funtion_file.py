@@ -17,14 +17,14 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 class MatrixLister:
     def __init__(self, mat_size, kernel_size, min_max_line_size,
-                 rotate, fades_per_mat, new_background, triangle):
+                 rotate, fades_per_mat, new_background, shape):
         self.mat_size = mat_size
         self.kernel_size = kernel_size
         self.min_max_line_size = min_max_line_size
         self.rotate = rotate
         self.fades_per_mat = fades_per_mat
         self.new_background = new_background
-        self.triangle = triangle
+        self.shape = shape
 
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
 
@@ -42,14 +42,25 @@ class MatrixLister:
                 rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
                 rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
             ))
-            if self.triangle:
+            if self.shape == 'triangle':
                 sfb = matrix_triangle_maker(self.mat_size, self.kernel_size,
                                             self.fades_per_mat,
                                             new_background=self.new_background)
-            else:
+
+            elif self.shape == 'face':
+                sfb = matrix_triangle_maker(self.mat_size, self.kernel_size,
+                                            self.fades_per_mat,
+                                            new_background=self.new_background, alternative=True)
+
+            elif self.shape == 'line':
                 sfb = matrix_maker(self.mat_size, self.kernel_size, line_size,
                                    self.fades_per_mat,
                                    new_background=self.new_background)
+            else:
+                print(f'{self.shape} is invalid')
+                print('Try triangle, face or line')
+                return
+
             mat, pos, alf = sfb
             list_matrix.append(mat)
             list_pos_mat.append(pos)
@@ -108,7 +119,7 @@ class MatrixLister:
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, old_weights=False):
+    def init_model(self, cnn_size, rnn_size, shape='auto'):
         checkpoint_filepath = 'weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
@@ -120,26 +131,47 @@ class MatrixLister:
         model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                       metrics=[Precision(name='precision'), Recall(name='recall')])
 
-        if old_weights:
-            if path.exists('weights_good_triangle.h5') and self.triangle:
+        if shape == 'auto':
+            if path.exists('weights_good_triangle.h5') and self.shape == 'triangle':
+                print('Loading weights')
                 model.load_weights('weights_good_triangle.h5')
                 print('Loaded triangle weights')
-            elif path.exists('weights_good.h5') and not self.triangle:
+            elif path.exists('weights_good.h5') and self.shape == 'line':
                 model.load_weights('weights_good.h5')
                 print('Loaded line weights')
             else:
                 print('Did not find any weights')
+
+        elif shape == 'triangle':
+            model.load_weights('weights_good_triangle.h5')
+            print('Loaded triangle weights')
+        elif shape == 'line':
+            model.load_weights('weights_good.h5')
+            print('Loaded line weights')
 
         return model, [model_checkpoint_callback]  # , model_early_stopp_callback]
 
     def init_generator(self, batch_size, num_batch):
         return DataGenerator(self, batch_size, num_batch)
 
-    def save_model(self, model):
-        if self.triangle:
+    def save_model(self, model, shape='auto'):
+
+        if shape == 'auto':
+
+            if self.shape == 'triangle':
+                model.save_weights('weights_good_triangle.h5')
+                print('Saved triangle weights')
+            elif self.shape == 'line':
+                model.save_weights('weights_good.h5')
+                print('Saved line weights')
+            else:
+                print(f'error {self.shape} not recognized')
+
+        elif self.shape == 'triangle':
             model.save_weights('weights_good_triangle.h5')
             print('Saved triangle weights')
-        elif not self.triangle:
+
+        elif self.shape == 'line':
             model.save_weights('weights_good.h5')
             print('Saved line weights')
 
@@ -170,6 +202,11 @@ def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
         line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+
+        '''if alfa[i] < 0.5:
+            matrix_with_line = np.ones((rows, cols))
+            matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
+            line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]'''
 
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
