@@ -14,6 +14,7 @@ import raster_geometry as rg
 rng = rd.SystemRandom()
 from tensorflow.keras.callbacks import EarlyStopping
 
+
 class MatrixLister:
     def __init__(self, mat_size, kernel_size, min_max_line_size,
                  rotate, fades_per_mat, new_background, triangle):
@@ -107,12 +108,12 @@ class MatrixLister:
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, old_weights=True):
+    def init_model(self, cnn_size, rnn_size, old_weights=False):
         checkpoint_filepath = 'weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
 
-        model_early_stopp_callback = EarlyStopping(monitor='loss', patience=8, min_delta=0.001, mode='max')
+        # model_early_stopp_callback = EarlyStopping(monitor='loss', patience=8, min_delta=0.001, mode='max')
 
         model = build_model(self.mat_size, cnn_size, rnn_size, self.fades_per_mat)
         optimizer = ks.optimizers.Adam()
@@ -120,19 +121,27 @@ class MatrixLister:
                       metrics=[Precision(name='precision'), Recall(name='recall')])
 
         if old_weights:
-            if path.exists('weights_good_triangle.h5'):
+            if path.exists('weights_good_triangle.h5') and self.triangle:
                 model.load_weights('weights_good_triangle.h5')
                 print('Loaded triangle weights')
-            elif path.exists('weights_good.h5'):
+            elif path.exists('weights_good.h5') and not self.triangle:
                 model.load_weights('weights_good.h5')
                 print('Loaded line weights')
             else:
                 print('Did not find any weights')
 
-        return model, [model_checkpoint_callback, model_early_stopp_callback]
+        return model, [model_checkpoint_callback]  # , model_early_stopp_callback]
 
     def init_generator(self, batch_size, num_batch):
         return DataGenerator(self, batch_size, num_batch)
+
+    def save_model(self, model):
+        if self.triangle:
+            model.save_weights('weights_good_triangle.h5')
+            print('Saved triangle weights')
+        elif not self.triangle:
+            model.save_weights('weights_good.h5')
+            print('Saved line weights')
 
 
 def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -160,7 +169,7 @@ def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, 
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-                         line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+        line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
 
         matrix_line_fade.append(smooth_matrix * matrix_with_line)
 
@@ -169,7 +178,7 @@ def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, 
 
         else:
             matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+            line_start_position[1]:line_start_position[1] + line_size[1]] = 0
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 

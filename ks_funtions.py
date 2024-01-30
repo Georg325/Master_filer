@@ -81,7 +81,7 @@ def custom_loss(y_true, y_pred):
     return combined_loss
 
 
-def custom_weighted_loss(y_true, y_pred, weight_factor=15.0):
+def custom_weighted_loss(y_true, y_pred, weight_factor=10.0):
     """
     Custom loss function with emphasis on errors for values that are 1 in y_true using mean squared error.
 
