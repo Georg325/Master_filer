@@ -133,7 +133,6 @@ class MatrixLister:
 
         if shape == 'auto':
             if path.exists('weights_good_triangle.h5') and self.shape == 'triangle':
-                print('Loading weights')
                 model.load_weights('weights_good_triangle.h5')
                 print('Loaded triangle weights')
             elif path.exists('weights_good.h5') and self.shape == 'line':
@@ -161,17 +160,18 @@ class MatrixLister:
             if self.shape == 'triangle':
                 model.save_weights('weights_good_triangle.h5')
                 print('Saved triangle weights')
+
             elif self.shape == 'line':
                 model.save_weights('weights_good.h5')
                 print('Saved line weights')
             else:
                 print(f'error {self.shape} not recognized')
 
-        elif self.shape == 'triangle':
+        elif shape == 'triangle':
             model.save_weights('weights_good_triangle.h5')
             print('Saved triangle weights')
 
-        elif self.shape == 'line':
+        elif shape == 'line':
             model.save_weights('weights_good.h5')
             print('Saved line weights')
 
