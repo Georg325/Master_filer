@@ -150,8 +150,8 @@ class MatrixLister:
 
         return model, [model_checkpoint_callback]  # , model_early_stopp_callback]
 
-    def init_generator(self, batch_size, num_batch):
-        return DataGenerator(self, batch_size, num_batch)
+    def init_generator(self, batch_size, epochs, num_batch):
+        return DataGenerator(self, batch_size, epochs, num_batch)
 
     def save_model(self, model, shape='auto'):
 
