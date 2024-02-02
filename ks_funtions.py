@@ -13,12 +13,11 @@ import numpy as np
 class DataGenerator(ks.utils.Sequence, ABC):
     """Generates data for Keras"""
 
-    def __init__(self, mat_obj, tot_epoch, batch_size=128, num_batch=2):
+    def __init__(self, mat_obj, batch_size=128, num_batch=2):
         """Initialization"""
         self.mat_obj = mat_obj
         self.batch_size = batch_size
         self.num_batch = num_batch
-        self.tot_epoch = tot_epoch
 
     def __len__(self):
         """Denotes the number of batches per epoch"""

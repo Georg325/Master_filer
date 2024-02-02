@@ -32,6 +32,22 @@ class MatrixLister:
     def from_dict(cls, params):
         return cls(**params)
 
+    def generate_pred_data(self, model, num_to_pred):
+        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(num_to_pred)
+
+        input_matrix = np.array(self.con_matrix[:num_to_pred * self.fades_per_mat])
+        true_matrix = self.line_pos_mat[:num_to_pred * self.fades_per_mat]
+
+        pred = predict_neural_network(model, input_matrix)
+
+        input_matrix = np.concatenate(input_matrix, axis=0)
+        true_matrix = np.concatenate(true_matrix, axis=0)
+        pred = np.concatenate(pred, axis=0)
+
+        predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
+
+        return input_matrix, true_matrix, predicted_line_pos_mat
+
     def create_matrix_in_list(self, numb_of_time_series):
         list_matrix = []
         list_pos_mat = []
@@ -69,18 +85,7 @@ class MatrixLister:
         return tf.convert_to_tensor(list_matrix), list_pos_mat, list_alfa
 
     def plot_matrices(self, model, num_to_pred, interval=500):
-        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(num_to_pred)
-
-        input_matrix = np.array(self.con_matrix[:num_to_pred * self.fades_per_mat])
-        true_matrix = self.line_pos_mat[:num_to_pred * self.fades_per_mat]
-
-        pred = predict_neural_network(model, input_matrix)
-
-        input_matrix = np.concatenate(input_matrix, axis=0)
-        true_matrix = np.concatenate(true_matrix, axis=0)
-        pred = np.concatenate(pred, axis=0)
-
-        predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
+        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred)
 
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
 
@@ -105,6 +110,37 @@ class MatrixLister:
         plt.tight_layout()
         return animation
 
+    def display_frames(self, model, num_frames=6):
+        num_frames = min(8, num_frames)
+        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1)
+        fig, axes = plt.subplots(num_frames, 2)  # num_frames rows, 3 columns
+
+        for i in range(num_frames):
+            # Plot Combined Matrix (True Matrix overlaid on Predicted Matrix)
+            im = axes[i, 0].imshow(input_matrix[i], cmap='gray', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+            if i == 0:
+                axes[i, 0].set_title('Input Matrix')  # Title on the first plot only
+            axes[i, 0].set_xticks([])
+            axes[i, 0].set_yticks([])
+            axes[i, 0].set_xlabel('')
+            axes[i, 0].set_ylabel('')
+
+            # Scatter plot for True Line Position
+            true_positions = np.where(true_matrix[i] > 0)
+            axes[i, 1].plot(true_positions[1], true_positions[0], color='orange', linewidth=4)
+
+            # Plot Predicted Line Position Matrix
+            im = axes[i, 1].imshow(predicted_line_pos_mat[i], cmap='gray', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+            if i == 0:
+                axes[i, 1].set_title('Predicted Line Position Matrix')
+            axes[i, 1].set_xticks([])
+            axes[i, 1].set_yticks([])
+            axes[i, 1].set_xlabel('')
+            axes[i, 1].set_ylabel('')
+
+        plt.tight_layout(pad=0.1)
+        plt.show()
+
     def unique_lines(self):
         unique_lines = 0
         for i in range(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1):
@@ -119,7 +155,7 @@ class MatrixLister:
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, shape='auto'):
+    def init_model(self, cnn_size, rnn_size, weights_shape='auto'):
         checkpoint_filepath = 'weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
@@ -131,7 +167,7 @@ class MatrixLister:
         model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                       metrics=[Precision(name='precision'), Recall(name='recall')])
 
-        if shape == 'auto':
+        if weights_shape == 'auto':
             if path.exists('weights_good_triangle.h5') and self.shape == 'triangle':
                 model.load_weights('weights_good_triangle.h5')
                 print('Loaded triangle weights')
@@ -141,21 +177,21 @@ class MatrixLister:
             else:
                 print('Did not find any weights')
 
-        elif shape == 'triangle':
+        elif weights_shape == 'triangle':
             model.load_weights('weights_good_triangle.h5')
             print('Loaded triangle weights')
-        elif shape == 'line':
+        elif weights_shape == 'line':
             model.load_weights('weights_good.h5')
             print('Loaded line weights')
 
         return model, [model_checkpoint_callback]  # , model_early_stopp_callback]
 
-    def init_generator(self, batch_size, epochs, num_batch):
-        return DataGenerator(self, batch_size, epochs, num_batch)
+    def init_generator(self, batch_size, num_batch):
+        return DataGenerator(self, batch_size, num_batch)
 
-    def save_model(self, model, shape='auto'):
+    def save_model(self, model, weights_shape='auto'):
 
-        if shape == 'auto':
+        if weights_shape == 'auto':
 
             if self.shape == 'triangle':
                 model.save_weights('weights_good_triangle.h5')
@@ -167,11 +203,11 @@ class MatrixLister:
             else:
                 print(f'error {self.shape} not recognized')
 
-        elif shape == 'triangle':
+        elif weights_shape == 'triangle':
             model.save_weights('weights_good_triangle.h5')
             print('Saved triangle weights')
 
-        elif shape == 'line':
+        elif weights_shape == 'line':
             model.save_weights('weights_good.h5')
             print('Saved line weights')
 
@@ -346,3 +382,21 @@ def full_triangle(a, b, c):
     ab = rg.bresenham_line(a, b, endpoint=True)
     for x in set(ab):
         yield from rg.bresenham_line(c, x, endpoint=True)
+
+
+if __name__ == '__main__':
+    matrix_params = {
+        'mat_size': (15, 20),
+        'kernel_size': (3, 3),
+        'min_max_line_size': [(1, 7), (1, 7)],
+        'rotate': True,
+        'fades_per_mat': 8,
+        'new_background': True,
+        'shape': 'triangle',  # 'line', 'triangle', 'face'
+    }
+
+    matrix_lister = MatrixLister(**matrix_params)
+
+    models, callbacks = matrix_lister.init_model(32, 128, 'auto')  # auto, line, triangle, none
+
+    matrix_lister.display_frames(models, 9)
