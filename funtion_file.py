@@ -12,14 +12,12 @@ from ks_funtions import *
 import raster_geometry as rg
 
 rng = rd.SystemRandom()
-from tensorflow.keras.callbacks import EarlyStopping
 
 
 class MatrixLister:
-    def __init__(self, mat_size, kernel_size, min_max_line_size,
+    def __init__(self, mat_size, strength_kernel, min_max_line_size,
                  rotate, fades_per_mat, new_background, shape):
         self.mat_size = mat_size
-        self.kernel_size = kernel_size
         self.min_max_line_size = min_max_line_size
         self.rotate = rotate
         self.fades_per_mat = fades_per_mat
@@ -27,6 +25,14 @@ class MatrixLister:
         self.shape = shape
 
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
+
+        self.kernel = np.fromfunction(
+            lambda x, y: (1 / (2 * np.pi * strength_kernel[0] ** 2)) * np.exp(
+                -((x - (strength_kernel[1] - 1) / 2) ** 2 +
+                  (y - (strength_kernel[1] - 1) / 2) ** 2) / (2 * strength_kernel[0] ** 2)),
+            (strength_kernel[1], strength_kernel[1]))
+        self.kernel = self.kernel / np.sum(self.kernel)
+        print(self.kernel)
 
     @classmethod
     def from_dict(cls, params):
@@ -59,17 +65,17 @@ class MatrixLister:
                 rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
             ))
             if self.shape == 'triangle':
-                sfb = matrix_triangle_maker(self.mat_size, self.kernel_size,
+                sfb = matrix_triangle_maker(self.mat_size, self.kernel,
                                             self.fades_per_mat,
                                             new_background=self.new_background)
 
             elif self.shape == 'face':
-                sfb = matrix_triangle_maker(self.mat_size, self.kernel_size,
+                sfb = matrix_triangle_maker(self.mat_size, self.kernel,
                                             self.fades_per_mat,
                                             new_background=self.new_background, alternative=True)
 
             elif self.shape == 'line':
-                sfb = matrix_maker(self.mat_size, self.kernel_size, line_size,
+                sfb = matrix_maker(self.mat_size, self.kernel, line_size,
                                    self.fades_per_mat,
                                    new_background=self.new_background)
             else:
@@ -110,14 +116,14 @@ class MatrixLister:
         plt.tight_layout()
         return animation
 
-    def display_frames(self, model, num_frames=6):
-        num_frames = min(8, num_frames)
+    def display_frames(self, model, num_frames=np.inf):
+        num_frames = min(self.fades_per_mat, num_frames)
         input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1)
-        fig, axes = plt.subplots(num_frames, 2)  # num_frames rows, 3 columns
+        fig, axes = plt.subplots(num_frames, 3)  # num_frames rows, 3 columns
 
         for i in range(num_frames):
             # Plot Combined Matrix (True Matrix overlaid on Predicted Matrix)
-            im = axes[i, 0].imshow(input_matrix[i], cmap='gray', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+            im = axes[i, 0].imshow(input_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
             if i == 0:
                 axes[i, 0].set_title('Input Matrix')  # Title on the first plot only
             axes[i, 0].set_xticks([])
@@ -125,18 +131,22 @@ class MatrixLister:
             axes[i, 0].set_xlabel('')
             axes[i, 0].set_ylabel('')
 
-            # Scatter plot for True Line Position
-            true_positions = np.where(true_matrix[i] > 0)
-            axes[i, 1].plot(true_positions[1], true_positions[0], color='orange', linewidth=4)
-
-            # Plot Predicted Line Position Matrix
-            im = axes[i, 1].imshow(predicted_line_pos_mat[i], cmap='gray', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+            im = axes[i, 1].imshow(true_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
             if i == 0:
-                axes[i, 1].set_title('Predicted Line Position Matrix')
+                axes[i, 1].set_title('True line')  # Title on the first plot only
             axes[i, 1].set_xticks([])
             axes[i, 1].set_yticks([])
             axes[i, 1].set_xlabel('')
             axes[i, 1].set_ylabel('')
+
+            # Plot Predicted Line Position Matrix
+            im = axes[i, 2].imshow(predicted_line_pos_mat[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+            if i == 0:
+                axes[i, 2].set_title('Predicted Line Position Matrix')
+            axes[i, 2].set_xticks([])
+            axes[i, 2].set_yticks([])
+            axes[i, 2].set_xlabel('')
+            axes[i, 2].set_ylabel('')
 
         plt.tight_layout(pad=0.1)
         plt.show()
@@ -156,7 +166,7 @@ class MatrixLister:
         print('Possible lines: ', unique_lines)
 
     def init_model(self, cnn_size, rnn_size, weights_shape='auto'):
-        checkpoint_filepath = 'weights.h5'
+        checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
 
@@ -168,20 +178,20 @@ class MatrixLister:
                       metrics=[Precision(name='precision'), Recall(name='recall')])
 
         if weights_shape == 'auto':
-            if path.exists('weights_good_triangle.h5') and self.shape == 'triangle':
-                model.load_weights('weights_good_triangle.h5')
+            if path.exists(f'{self.mat_size}triangle.weights.h5') and self.shape == 'triangle':
+                model.load_weights(f'{self.mat_size}triangle.weights.h5')
                 print('Loaded triangle weights')
-            elif path.exists('weights_good.h5') and self.shape == 'line':
-                model.load_weights('weights_good.h5')
+            elif path.exists(f'{self.mat_size}line.weights.h5') and self.shape == 'line':
+                model.load_weights(f'{self.mat_size}line.weights.h5')
                 print('Loaded line weights')
             else:
                 print('Did not find any weights')
 
         elif weights_shape == 'triangle':
-            model.load_weights('weights_good_triangle.h5')
+            model.load_weights(f'{self.mat_size}triangle.weights.h5')
             print('Loaded triangle weights')
         elif weights_shape == 'line':
-            model.load_weights('weights_good.h5')
+            model.load_weights(f'{self.mat_size}line.weights.h5')
             print('Loaded line weights')
 
         return model, [model_checkpoint_callback]  # , model_early_stopp_callback]
@@ -194,29 +204,28 @@ class MatrixLister:
         if weights_shape == 'auto':
 
             if self.shape == 'triangle':
-                model.save_weights('weights_good_triangle.h5')
+                model.save_weights(f'{self.mat_size}triangle.weights.h5')
                 print('Saved triangle weights')
 
             elif self.shape == 'line':
-                model.save_weights('weights_good.h5')
+                model.save_weights(f'{self.mat_size}line.weights.h5')
                 print('Saved line weights')
             else:
                 print(f'error {self.shape} not recognized')
 
         elif weights_shape == 'triangle':
-            model.save_weights('weights_good_triangle.h5')
+            model.save_weights(f'{self.mat_size}triangle.weights.h5')
             print('Saved triangle weights')
 
         elif weights_shape == 'line':
-            model.save_weights('weights_good.h5')
+            model.save_weights(f'{self.mat_size}line.weights.h5')
             print('Saved line weights')
 
 
-def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, new_background=False):
+def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
     rows, cols = mat_size
 
     # smooth
-    kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
     smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
     # line_start
@@ -232,7 +241,6 @@ def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, 
 
     for i in range(num_per_mat):
         if new_background:
-            kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
             smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
         matrix_with_line = np.ones((rows, cols))
@@ -258,11 +266,10 @@ def matrix_maker(mat_size, kernel_size=(2, 2), line_size=(1, 2), num_per_mat=3, 
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def matrix_triangle_maker(mat_size, kernel_size=(2, 2), num_per_mat=3, new_background=False, alternative=False):
+def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False, alternative=False):
     rows, cols = mat_size
 
     # smooth
-    kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
     smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
     # line_start
@@ -298,7 +305,6 @@ def matrix_triangle_maker(mat_size, kernel_size=(2, 2), num_per_mat=3, new_backg
 
     for i in range(num_per_mat):
         if new_background:
-            kernel = np.ones(shape=kernel_size, dtype=float) / np.prod(kernel_size)
             smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
         matrix_with_line = np.ones((rows, cols))
@@ -386,17 +392,24 @@ def full_triangle(a, b, c):
 
 if __name__ == '__main__':
     matrix_params = {
-        'mat_size': (15, 20),
-        'kernel_size': (3, 3),
-        'min_max_line_size': [(1, 7), (1, 7)],
+        'mat_size': (5, 9),
+        'kernel_size': (1, 1),
+        'min_max_line_size': [(1, 3), (1, 3)],
         'rotate': True,
-        'fades_per_mat': 8,
-        'new_background': True,
-        'shape': 'triangle',  # 'line', 'triangle', 'face'
+        'fades_per_mat': 10,
+        'new_background': False,
+        'shape': 'line',  # 'line', 'triangle', 'face'
     }
 
     matrix_lister = MatrixLister(**matrix_params)
+    models, callbacks = matrix_lister.init_model(32, 128, 'none')  # auto, line, triangle, none
 
-    models, callbacks = matrix_lister.init_model(32, 128, 'auto')  # auto, line, triangle, none
+    batch_size = 50
+    batch_num = 10
+    epochs = 50
 
-    matrix_lister.display_frames(models, 9)
+    generator = matrix_lister.init_generator(batch_size, batch_num)
+
+    hist = models.fit(generator, epochs=epochs)
+
+    matrix_lister.display_frames(models)

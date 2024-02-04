@@ -1,13 +1,12 @@
-from abc import ABC
+import numpy as np
+import tensorflow as tf
+import keras as ks
 
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, Reshape, TimeDistributed, Input, LSTM
 
-import tensorflow as tf
-from keras import backend as k_back
-import keras as ks
 
-import numpy as np
+from abc import ABC
 
 
 class DataGenerator(ks.utils.Sequence, ABC):
@@ -15,6 +14,7 @@ class DataGenerator(ks.utils.Sequence, ABC):
 
     def __init__(self, mat_obj, batch_size=128, num_batch=2):
         """Initialization"""
+        super().__init__()
         self.mat_obj = mat_obj
         self.batch_size = batch_size
         self.num_batch = num_batch
@@ -74,13 +74,13 @@ def custom_weighted_loss(y_true, y_pred, weight_factor=5.0):
     """
 
     # Calculate squared errors
-    squared_errors = k_back.square(tf.cast(y_true, dtype=tf.float32) - y_pred)
+    squared_errors = tf.math.square(tf.cast(y_true, dtype=tf.float32) - y_pred)
 
     # Apply weights to positive class
     weighted_squared_errors = (tf.cast(y_true, dtype=tf.float32) * (weight_factor * squared_errors)
                                + tf.cast((1 - y_true), dtype=tf.float32) * squared_errors)
 
     # Calculate mean loss over all elements
-    loss = k_back.mean(weighted_squared_errors)
+    loss = tf.keras.backend.mean(weighted_squared_errors)
 
     return loss
