@@ -18,6 +18,7 @@ class MatrixLister:
     def __init__(self, mat_size, strength_kernel, min_max_line_size,
                  rotate, fades_per_mat, new_background, shape):
         self.mat_size = mat_size
+        self.strength, self.kernel_size = strength_kernel
         self.min_max_line_size = min_max_line_size
         self.rotate = rotate
         self.fades_per_mat = fades_per_mat
@@ -25,34 +26,37 @@ class MatrixLister:
         self.shape = shape
 
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
+        self.kernel = None
+        self.model_type = None
 
-        self.kernel = np.fromfunction(
-            lambda x, y: (1 / (2 * np.pi * strength_kernel[0] ** 2)) * np.exp(
-                -((x - (strength_kernel[1] - 1) / 2) ** 2 +
-                  (y - (strength_kernel[1] - 1) / 2) ** 2) / (2 * strength_kernel[0] ** 2)),
-            (strength_kernel[1], strength_kernel[1]))
-        self.kernel = self.kernel / np.sum(self.kernel)
-        print(self.kernel)
+        self.scores = []
+
+        self.randomize_kernel((self.strength, self.strength))
 
     @classmethod
     def from_dict(cls, params):
         return cls(**params)
 
-    def generate_pred_data(self, model, num_to_pred):
+    def generate_pred_data(self, model, num_to_pred, concatenate=True):
         self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(num_to_pred)
 
         input_matrix = np.array(self.con_matrix[:num_to_pred * self.fades_per_mat])
         true_matrix = self.line_pos_mat[:num_to_pred * self.fades_per_mat]
 
-        pred = predict_neural_network(model, input_matrix)
+        input_data = np.expand_dims(np.array([matrix for matrix in input_matrix]), -1)
+        true_matrix = np.expand_dims(np.array([matrix for matrix in true_matrix]), -1)
+        pred = model.predict(input_data)
 
-        input_matrix = np.concatenate(input_matrix, axis=0)
-        true_matrix = np.concatenate(true_matrix, axis=0)
-        pred = np.concatenate(pred, axis=0)
+        if concatenate:
+            input_matrix = np.concatenate(input_matrix, axis=0)
+            true_matrix = np.concatenate(true_matrix, axis=0)
+            pred = np.concatenate(pred, axis=0)
 
-        predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
+            predicted_line_pos_mat = np.array(pred).reshape(input_matrix.shape)
 
-        return input_matrix, true_matrix, predicted_line_pos_mat
+            return input_matrix, true_matrix, predicted_line_pos_mat
+        else:
+            return np.array(input_matrix), np.array(true_matrix), np.array(pred)
 
     def create_matrix_in_list(self, numb_of_time_series):
         list_matrix = []
@@ -116,40 +120,43 @@ class MatrixLister:
         plt.tight_layout()
         return animation
 
-    def display_frames(self, model, num_frames=np.inf):
-        num_frames = min(self.fades_per_mat, num_frames)
-        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1)
-        fig, axes = plt.subplots(num_frames, 3)  # num_frames rows, 3 columns
+    def display_frames(self, model, num_frames=np.inf, num_to_pred=1):
 
-        for i in range(num_frames):
-            # Plot Combined Matrix (True Matrix overlaid on Predicted Matrix)
-            im = axes[i, 0].imshow(input_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
-            if i == 0:
-                axes[i, 0].set_title('Input Matrix')  # Title on the first plot only
-            axes[i, 0].set_xticks([])
-            axes[i, 0].set_yticks([])
-            axes[i, 0].set_xlabel('')
-            axes[i, 0].set_ylabel('')
+        for _ in range(num_to_pred):
+            num_frames = min(self.fades_per_mat, num_frames)
+            input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1)
+            fig, axes = plt.subplots(num_frames, 3)  # num_frames rows, 3 columns
+            im = []
+            for i in range(num_frames):
+                # Plot Combined Matrix (True Matrix overlaid on Predicted Matrix)
+                im.append(axes[i, 0].imshow(input_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
+                if i == 0:
+                    axes[i, 0].set_title('Input Matrix')  # Title on the first plot only
+                axes[i, 0].set_xticks([])
+                axes[i, 0].set_yticks([])
+                axes[i, 0].set_xlabel('')
+                axes[i, 0].set_ylabel('')
 
-            im = axes[i, 1].imshow(true_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
-            if i == 0:
-                axes[i, 1].set_title('True line')  # Title on the first plot only
-            axes[i, 1].set_xticks([])
-            axes[i, 1].set_yticks([])
-            axes[i, 1].set_xlabel('')
-            axes[i, 1].set_ylabel('')
+                im.append(axes[i, 1].imshow(true_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
+                if i == 0:
+                    axes[i, 1].set_title('True line')  # Title on the first plot only
+                axes[i, 1].set_xticks([])
+                axes[i, 1].set_yticks([])
+                axes[i, 1].set_xlabel('')
+                axes[i, 1].set_ylabel('')
 
-            # Plot Predicted Line Position Matrix
-            im = axes[i, 2].imshow(predicted_line_pos_mat[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
-            if i == 0:
-                axes[i, 2].set_title('Predicted Line Position Matrix')
-            axes[i, 2].set_xticks([])
-            axes[i, 2].set_yticks([])
-            axes[i, 2].set_xlabel('')
-            axes[i, 2].set_ylabel('')
+                # Plot Predicted Line Position Matrix
+                im.append(axes[i, 2].imshow(predicted_line_pos_mat[i], interpolation='nearest', aspect='auto', vmin=0,
+                                            vmax=1))
+                if i == 0:
+                    axes[i, 2].set_title('Predicted Line Position Matrix')
+                axes[i, 2].set_xticks([])
+                axes[i, 2].set_yticks([])
+                axes[i, 2].set_xlabel('')
+                axes[i, 2].set_ylabel('')
 
-        plt.tight_layout(pad=0.1)
-        plt.show()
+            plt.tight_layout(pad=0.1)
+            plt.show(block=False)
 
     def unique_lines(self):
         unique_lines = 0
@@ -165,61 +172,93 @@ class MatrixLister:
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, weights_shape='auto'):
+    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru'):
+        self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
 
-        # model_early_stopp_callback = EarlyStopping(monitor='loss', patience=8, min_delta=0.001, mode='max')
+        model_early_stopp_callback = ks.callbacks.EarlyStopping(monitor='loss', patience=3, min_delta=0.001,
+                                                                restore_best_weights=True, start_from_epoch=20)
 
-        model = build_model(self.mat_size, cnn_size, rnn_size, self.fades_per_mat)
+        parameters = self.mat_size, cnn_size, rnn_size, self.fades_per_mat
+
+        model = build_model(model_type, parameters)
+
         optimizer = ks.optimizers.Adam()
         model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                       metrics=[Precision(name='precision'), Recall(name='recall')])
 
+        return model, [model_checkpoint_callback, model_early_stopp_callback]
+
+    def init_generator(self, model, batch_size, num_batch):
+        return DataGenerator(self, model, batch_size, num_batch)
+
+    def load_model(self, model, weights_shape='auto'):
+
         if weights_shape == 'auto':
-            if path.exists(f'{self.mat_size}triangle.weights.h5') and self.shape == 'triangle':
-                model.load_weights(f'{self.mat_size}triangle.weights.h5')
-                print('Loaded triangle weights')
-            elif path.exists(f'{self.mat_size}line.weights.h5') and self.shape == 'line':
-                model.load_weights(f'{self.mat_size}line.weights.h5')
-                print('Loaded line weights')
+            if path.exists(f'{self.mat_size}{self.model_type}triangle.weights.h5') and self.shape == 'triangle':
+                try:
+                    model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
+                    print('Loaded triangle weights')
+                except ValueError:
+                    print('Could not load triangle weights')
+
+            elif path.exists(f'{self.mat_size}{self.model_type}line.weights.h5') and self.shape == 'line':
+                try:
+                    model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+                    print('Loaded line weights')
+                except ValueError:
+                    print('Could not load line weights')
             else:
                 print('Did not find any weights')
 
         elif weights_shape == 'triangle':
-            model.load_weights(f'{self.mat_size}triangle.weights.h5')
+            model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
             print('Loaded triangle weights')
         elif weights_shape == 'line':
-            model.load_weights(f'{self.mat_size}line.weights.h5')
+            model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Loaded line weights')
-
-        return model, [model_checkpoint_callback]  # , model_early_stopp_callback]
-
-    def init_generator(self, batch_size, num_batch):
-        return DataGenerator(self, batch_size, num_batch)
 
     def save_model(self, model, weights_shape='auto'):
 
         if weights_shape == 'auto':
 
             if self.shape == 'triangle':
-                model.save_weights(f'{self.mat_size}triangle.weights.h5')
+                model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
                 print('Saved triangle weights')
 
             elif self.shape == 'line':
-                model.save_weights(f'{self.mat_size}line.weights.h5')
+                model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
                 print('Saved line weights')
             else:
                 print(f'error {self.shape} not recognized')
 
         elif weights_shape == 'triangle':
-            model.save_weights(f'{self.mat_size}triangle.weights.h5')
+            model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
             print('Saved triangle weights')
 
         elif weights_shape == 'line':
-            model.save_weights(f'{self.mat_size}line.weights.h5')
+            model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Saved line weights')
+
+    def randomize_kernel(self, strength_range):
+        strength = np.random.uniform(low=strength_range[0], high=strength_range[1])
+        self.kernel = np.fromfunction(
+            lambda x, y: (1 / (2 * np.pi * strength ** 2)) * np.exp(
+                -((x - (self.kernel_size - 1) / 2) ** 2 +
+                  (y - (self.kernel_size - 1) / 2) ** 2) / (2 * strength ** 2)),
+            (self.kernel_size, self.kernel_size))
+        self.kernel = self.kernel / np.sum(self.kernel)
+
+    def eval(self, model, batch):
+        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, batch, False)
+        scores = custom_accuracy(true_matrix, predicted_line_pos_mat)
+        self.scores.append(scores)
+        return scores
+
+    def clear_score(self):
+        self.scores = []
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -373,7 +412,7 @@ def plots(matrix, interval=200):
 
     def update(frame):
         ax.clear()
-        im = ax.imshow(matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+        im = ax.imshow(matrix[frame], interpolation='nearest', aspect='auto')
 
         return [im]
 
@@ -384,32 +423,22 @@ def plots(matrix, interval=200):
     return animation
 
 
+def plot_scores(all_f1_scores):
+    scores = np.transpose(np.array(all_f1_scores))
+    plt.figure(figsize=(10, 6))
+
+    for i, f1_scores in enumerate(scores):
+        plt.plot(f1_scores, label=f"Frame {i}")
+
+    plt.title("F1 Scores for Each Timestep")
+    plt.xlabel('epoch')
+    plt.ylabel('F1 Score')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
 def full_triangle(a, b, c):
     ab = rg.bresenham_line(a, b, endpoint=True)
     for x in set(ab):
         yield from rg.bresenham_line(c, x, endpoint=True)
-
-
-if __name__ == '__main__':
-    matrix_params = {
-        'mat_size': (5, 9),
-        'kernel_size': (1, 1),
-        'min_max_line_size': [(1, 3), (1, 3)],
-        'rotate': True,
-        'fades_per_mat': 10,
-        'new_background': False,
-        'shape': 'line',  # 'line', 'triangle', 'face'
-    }
-
-    matrix_lister = MatrixLister(**matrix_params)
-    models, callbacks = matrix_lister.init_model(32, 128, 'none')  # auto, line, triangle, none
-
-    batch_size = 50
-    batch_num = 10
-    epochs = 50
-
-    generator = matrix_lister.init_generator(batch_size, batch_num)
-
-    hist = models.fit(generator, epochs=epochs)
-
-    matrix_lister.display_frames(models)
