@@ -9,6 +9,7 @@ from tensorflow.keras.metrics import Precision, Recall, BinaryIoU
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from models import build_model
 
 from ks_funtions import *
 import raster_geometry as rg
@@ -189,7 +190,7 @@ class MatrixLister:
 
         optimizer = ks.optimizers.Adam()
         model.compile(optimizer=optimizer, loss=custom_weighted_loss,
-                      metrics=[Precision(name='precision'), Recall(name='recall'), BinaryIoU(name='IoU')])
+                      metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
 
         return model, [model_checkpoint_callback, model_early_stopp_callback]
 
