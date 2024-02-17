@@ -1,9 +1,11 @@
 from os import path
+
+import numpy as np
 import scipy as sp
 import pandas as pd
 import random as rd
 
-from tensorflow.keras.metrics import Precision, Recall
+from tensorflow.keras.metrics import Precision, Recall, BinaryIoU
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -187,7 +189,7 @@ class MatrixLister:
 
         optimizer = ks.optimizers.Adam()
         model.compile(optimizer=optimizer, loss=custom_weighted_loss,
-                      metrics=[Precision(name='precision'), Recall(name='recall')])
+                      metrics=[Precision(name='precision'), Recall(name='recall'), BinaryIoU(name='IoU')])
 
         return model, [model_checkpoint_callback, model_early_stopp_callback]
 
@@ -253,12 +255,26 @@ class MatrixLister:
 
     def eval(self, model, batch):
         input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, batch, False)
-        scores = custom_accuracy(true_matrix, predicted_line_pos_mat)
+        scores = custom_iou(true_matrix, predicted_line_pos_mat)
         self.scores.append(scores)
         return scores
 
     def clear_score(self):
         self.scores = []
+
+    def plot_scores(self, all_f1_scores):
+        scores = np.transpose(np.array(all_f1_scores))
+        plt.figure(figsize=(10, 6))
+
+        for i, f1_scores in enumerate(scores):
+            plt.plot(f1_scores, label=f"Frame {i}")
+
+        plt.title(f"iou Scores for {self.model_type}")
+        plt.xlabel('epoch')
+        plt.ylabel('F1 Score')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -372,6 +388,7 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
 
     valid_keys = None
     history_dict = training_history_object.history
+    print(history_dict)
 
     if list_of_metrics is None:
         list_of_metrics = [key for key in list(history_dict.keys()) if 'val_' not in key]
@@ -379,6 +396,7 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
     train_hist_df = pd.DataFrame(history_dict)
     # train_hist_df.head()
     train_keys = list_of_metrics
+    print(train_keys)
 
     if with_val:
         valid_keys = ['val_' + key for key in train_keys]
@@ -421,21 +439,6 @@ def plots(matrix, interval=200):
     plt.show(block=False)
     plt.show()
     return animation
-
-
-def plot_scores(all_f1_scores):
-    scores = np.transpose(np.array(all_f1_scores))
-    plt.figure(figsize=(10, 6))
-
-    for i, f1_scores in enumerate(scores):
-        plt.plot(f1_scores, label=f"Frame {i}")
-
-    plt.title("F1 Scores for Each Timestep")
-    plt.xlabel('epoch')
-    plt.ylabel('F1 Score')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 
 def full_triangle(a, b, c):
