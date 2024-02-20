@@ -69,10 +69,6 @@ class MatrixLister:
         list_alfa = []
 
         for k in range(0, numb_of_time_series):
-            line_size = rotater((
-                rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
-                rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])
-            ))
             if self.shape == 'triangle':
                 sfb = matrix_triangle_maker(self.mat_size, self.kernel,
                                             self.fades_per_mat,
@@ -84,9 +80,20 @@ class MatrixLister:
                                             new_background=self.new_background, alternative=True)
 
             elif self.shape == 'line':
+                if self.rotate:  # makes the line
+                    line_size = rotater((
+                        rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
+                        rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])))
+
+                else:  # does not rotate the line
+                    line_size = (
+                        rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
+                        rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1]))
+
                 sfb = matrix_maker(self.mat_size, self.kernel, line_size,
                                    self.fades_per_mat,
                                    new_background=self.new_background)
+
             else:
                 print(f'{self.shape} is invalid')
                 print('Try triangle, face or line')
@@ -314,7 +321,8 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-        line_start_position[1]:line_start_position[1] + line_size[1]] = alfa[i]
+                         line_start_position[1]:line_start_position[1] + line_size[1]]\
+            = alfa[i]
 
         '''if alfa[i] < 0.5:
             matrix_with_line = np.ones((rows, cols))
@@ -328,7 +336,7 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
 
         else:
             matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-            line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
@@ -399,18 +407,16 @@ def plot_training_history(training_history_object, model_type, list_of_metrics=N
                                   in the training history object. By default, it will
                                   plot all of them in individual subplots.
     """
-
-    valid_keys = None
     history_dict = training_history_object.history
 
-    ious = []
+    iou_s = []
     preps = []
     other = []
     if list_of_metrics is None:
         list_of_metrics = [key for key in list(history_dict.keys())]
         for metric in list_of_metrics:
             if 'IoU' in metric:
-                ious.append(metric)
+                iou_s.append(metric)
             elif 'precision' in metric or 'recall' in metric:
                 preps.append(metric)
             else:
@@ -420,19 +426,19 @@ def plot_training_history(training_history_object, model_type, list_of_metrics=N
     train_keys = other
     nr_plots = len(other)
 
-    if len(ious) > 0:
+    if len(iou_s) > 0:
         nr_plots += 1
     if len(preps) > 0:
         nr_plots += 1
 
-    fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
+    fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 6))
 
     plt_nr = 0
     done = False
 
     for i in range(len(other)):
-        ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label='Training')
-
+        ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
+        ax[plt_nr].set_ylim(0, 1)
         ax[plt_nr].set_xlabel('Epoch')
         ax[plt_nr].set_title(train_keys[plt_nr])
         ax[plt_nr].grid('on')
@@ -451,13 +457,15 @@ def plot_training_history(training_history_object, model_type, list_of_metrics=N
         plt_nr += 1
         done = False
 
-    for k in range(len(ious)):
-        ax[plt_nr].plot(np.array(train_hist_df[ious[k]]), label=f'Frame {k + 1}')
+    for k in range(len(iou_s)):
+        ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
         ax[plt_nr].set_ylim(0, 1)
         ax[plt_nr].set_xlabel('Epoch')
         ax[plt_nr].set_title('IoU')
         ax[plt_nr].grid('on')
         ax[plt_nr].legend()
+    if done:
+        plt_nr += 1
 
     fig.suptitle(f'Metrics from the {model_type} model')
 

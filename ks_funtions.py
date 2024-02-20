@@ -174,6 +174,6 @@ class IoU_Maker(tf.keras.metrics.Metric):
         iou_timestep = ks.backend.maximum(1e-10, self.intersection / (self.union - self.intersection))
         return iou_timestep
 
-    def reset_states(self):
+    def reset_state(self):
         self.intersection.assign(0.0)
         self.union.assign(0.0)

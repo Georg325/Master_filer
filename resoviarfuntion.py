@@ -26,7 +26,7 @@ class ReservoirLayer(tf.keras.layers.Layer):
         self.bias = self.add_weight("bias",
                                     shape=(self.reservoir_size, 1),
                                     initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                    trainable=True)
+                                    trainable=False)
 
         self.reservoir_start = self.add_weight("reservoir_state",
                                                shape=(self.reservoir_size, 1),
@@ -51,6 +51,7 @@ class ReservoirLayer(tf.keras.layers.Layer):
                                           tf.matmul(self.input_weights, input_var) + self.bias))
 
             outputs.append(tf.identity(reservoir_cal))  # Append the reservoir state at each time step
+
         return tf.squeeze(tf.stack(outputs, axis=1), axis=-1)  # Stack the outputs along the temporal dimension
 
     def compute_output_shape(self, input_shape):
