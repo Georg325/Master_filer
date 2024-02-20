@@ -12,7 +12,7 @@ matrix_params = {
     'shape': 'line',  # 'line', 'triangle', 'face'
 }
 
-model_type = 'cnn'  # cnn_rnn, cnn, res, dense
+model_type = 'dense'  # cnn_rnn, cnn, res, dense
 
 matrix_lister = MatrixLister(**matrix_params)
 #%%
@@ -21,7 +21,7 @@ model, callbacks = matrix_lister.init_model(32, 64, model_type, True)
 matrix_lister.load_model(model, 'none')  # auto, line, triangle, none
 
 #%%
-batch_size = 500
+batch_size = 50
 batch_num = 10
 epochs = 50
 
@@ -32,7 +32,7 @@ hist = model.fit(generator, epochs=epochs)
 print(time.time() - start)
 
 #%%
-matrix_lister.save_model(model, 'none')  # auto, line, triangle, none
+matrix_lister.save_model(model, 'auto')  # auto, line, triangle, none
 
 #%%
 

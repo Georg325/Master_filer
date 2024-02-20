@@ -413,7 +413,6 @@ def plot_training_history(training_history_object, model_type, list_of_metrics=N
                 ious.append(metric)
             elif 'precision' in metric or 'recall' in metric:
                 preps.append(metric)
-                print(metric)
             else:
                 other.append(metric)
 
@@ -429,6 +428,7 @@ def plot_training_history(training_history_object, model_type, list_of_metrics=N
     fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
 
     plt_nr = 0
+    done = False
 
     for i in range(len(other)):
         ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label='Training')
@@ -440,17 +440,20 @@ def plot_training_history(training_history_object, model_type, list_of_metrics=N
         plt_nr += 1
 
     for k in range(len(preps)):
+        done = True
         ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
-
+        ax[plt_nr].set_ylim(0, 1)
         ax[plt_nr].set_xlabel('Epoch')
         ax[plt_nr].set_title('Precision and Recall')
         ax[plt_nr].grid('on')
         ax[plt_nr].legend()
-    plt_nr += 1
+    if done:
+        plt_nr += 1
+        done = False
 
     for k in range(len(ious)):
         ax[plt_nr].plot(np.array(train_hist_df[ious[k]]), label=f'Frame {k + 1}')
-
+        ax[plt_nr].set_ylim(0, 1)
         ax[plt_nr].set_xlabel('Epoch')
         ax[plt_nr].set_title('IoU')
         ax[plt_nr].grid('on')
