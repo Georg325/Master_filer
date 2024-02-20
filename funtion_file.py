@@ -20,6 +20,7 @@ rng = rd.SystemRandom()
 class MatrixLister:
     def __init__(self, mat_size, strength_kernel, min_max_line_size,
                  rotate, fades_per_mat, new_background, shape):
+
         self.mat_size = mat_size
         self.strength, self.kernel_size = strength_kernel
         self.min_max_line_size = min_max_line_size
@@ -31,6 +32,7 @@ class MatrixLister:
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
         self.kernel = None
         self.model_type = None
+        self.alternative = None
 
         self.scores = []
 
@@ -106,15 +108,17 @@ class MatrixLister:
             # Plot Input Matrix
             im = [axes[0].imshow(input_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)]
             axes[0].set_title('Input Matrix')
+            axes[0].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
 
             # Plot True Line Position Matrix
             im.append(axes[1].imshow(true_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
             axes[1].set_title('True Line Position Matrix')
-
+            axes[1].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
             # Plot Predicted Line Position Matrix
             im.append(
                 axes[2].imshow(predicted_line_pos_mat[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
             axes[2].set_title('Predicted Line Position Matrix')
+            axes[2].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
 
             return im
 
@@ -175,7 +179,8 @@ class MatrixLister:
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru'):
+    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', alternative=False):
+        self.alternative = alternative
         self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
@@ -187,15 +192,20 @@ class MatrixLister:
         parameters = self.mat_size, cnn_size, rnn_size, self.fades_per_mat
 
         model = build_model(model_type, parameters)
-
         optimizer = ks.optimizers.Adam()
-        model.compile(optimizer=optimizer, loss=custom_weighted_loss,
-                      metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
+        if alternative:
+            metrics = [IoU_Maker(n) for n in range(1, 10)]
+            model.compile(optimizer=optimizer, loss=custom_weighted_loss,
+                          metrics=[metrics, Precision(name='precision'), Recall(name='recall')])
+        else:
+
+            model.compile(optimizer=optimizer, loss=custom_weighted_loss,
+                          metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
 
         return model, [model_checkpoint_callback, model_early_stopp_callback]
 
     def init_generator(self, model, batch_size, num_batch):
-        return DataGenerator(self, model, batch_size, num_batch)
+        return DataGenerator(self, model, batch_size, num_batch, self.alternative)
 
     def load_model(self, model, weights_shape='auto'):
 
@@ -264,18 +274,21 @@ class MatrixLister:
         self.scores = []
 
     def plot_scores(self, all_f1_scores):
+        if self.alternative:
+            return
         scores = np.transpose(np.array(all_f1_scores))
         plt.figure(figsize=(10, 6))
 
-        for i, f1_scores in enumerate(scores):
-            plt.plot(f1_scores, label=f"Frame {i}")
+        for i, iou_scores in enumerate(scores):
+            plt.plot(iou_scores, label=f"Frame {i}")
 
-        plt.title(f"iou Scores for {self.model_type}")
+        plt.title(f"IoU Scores for {self.model_type} on {self.mat_size} grid")
         plt.xlabel('epoch')
-        plt.ylabel('F1 Score')
+        plt.ylabel('IoU Score')
         plt.legend()
         plt.grid(True)
         plt.show()
+        print(scores[-1])
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -377,7 +390,7 @@ def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False,
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def plot_training_history(training_history_object, list_of_metrics=None, with_val=True):
+def plot_training_history(training_history_object, model_type, list_of_metrics=None):
     """
     Input:
         training_history_object:: Object returned by model.fit() function in keras
@@ -389,32 +402,61 @@ def plot_training_history(training_history_object, list_of_metrics=None, with_va
 
     valid_keys = None
     history_dict = training_history_object.history
-    print(history_dict)
 
+    ious = []
+    preps = []
+    other = []
     if list_of_metrics is None:
-        list_of_metrics = [key for key in list(history_dict.keys()) if 'val_' not in key]
+        list_of_metrics = [key for key in list(history_dict.keys())]
+        for metric in list_of_metrics:
+            if 'IoU' in metric:
+                ious.append(metric)
+            elif 'precision' in metric or 'recall' in metric:
+                preps.append(metric)
+                print(metric)
+            else:
+                other.append(metric)
 
     train_hist_df = pd.DataFrame(history_dict)
-    # train_hist_df.head()
-    train_keys = list_of_metrics
-    print(train_keys)
+    train_keys = other
+    nr_plots = len(other)
 
-    if with_val:
-        valid_keys = ['val_' + key for key in train_keys]
+    if len(ious) > 0:
+        nr_plots += 1
+    if len(preps) > 0:
+        nr_plots += 1
 
-    nr_plots = len(train_keys)
     fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 4))
 
-    for i in range(len(train_keys)):
-        ax[i].plot(np.array(train_hist_df[train_keys[i]]), label='Training')
+    plt_nr = 0
 
-        if with_val:
-            ax[i].plot(np.array(train_hist_df[valid_keys[i]]), label='Validation')
+    for i in range(len(other)):
+        ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label='Training')
 
-        ax[i].set_xlabel('Epoch')
-        ax[i].set_title(train_keys[i])
-        ax[i].grid('on')
-        ax[i].legend()
+        ax[plt_nr].set_xlabel('Epoch')
+        ax[plt_nr].set_title(train_keys[plt_nr])
+        ax[plt_nr].grid('on')
+        ax[plt_nr].legend()
+        plt_nr += 1
+
+    for k in range(len(preps)):
+        ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
+
+        ax[plt_nr].set_xlabel('Epoch')
+        ax[plt_nr].set_title('Precision and Recall')
+        ax[plt_nr].grid('on')
+        ax[plt_nr].legend()
+    plt_nr += 1
+
+    for k in range(len(ious)):
+        ax[plt_nr].plot(np.array(train_hist_df[ious[k]]), label=f'Frame {k + 1}')
+
+        ax[plt_nr].set_xlabel('Epoch')
+        ax[plt_nr].set_title('IoU')
+        ax[plt_nr].grid('on')
+        ax[plt_nr].legend()
+
+    fig.suptitle(f'Metrics from the {model_type} model')
 
     fig.tight_layout()
     plt.show()

@@ -5,17 +5,17 @@ import keras as ks
 from abc import ABC
 
 
-
 class DataGenerator(ks.utils.Sequence, ABC):
     """Generates data for Keras"""
 
-    def __init__(self, mat_obj, model, batch_size=500, num_batch=2):
+    def __init__(self, mat_obj, model, batch_size=500, num_batch=2, alternative=False):
         """Initialization"""
         super().__init__()
         self.mat_obj = mat_obj
         self.model = model
         self.batch_size = batch_size
         self.num_batch = num_batch
+        self.alternative = alternative
         self.mat_obj.clear_score()
 
     def __len__(self):
@@ -31,11 +31,12 @@ class DataGenerator(ks.utils.Sequence, ABC):
 
     def on_epoch_end(self):
         """Updates indexes after each epoch"""
-        self.mat_obj.eval(self.model, self.batch_size)
+        if not self.alternative:
+            self.mat_obj.eval(self.model, self.batch_size)
         return
 
 
-def custom_weighted_loss(y_true, y_pred, scaling=1.5):
+def custom_weighted_loss(y_true, y_pred, scaling=1.0):
     """
     Custom loss function with emphasis on errors for values that are 1 in y_true using mean squared error.
     Weighting factor is dependent on the fill factor of y_true.
@@ -47,20 +48,22 @@ def custom_weighted_loss(y_true, y_pred, scaling=1.5):
     Returns:
     - Weighted mean squared error loss
     """
+    y_true = tf.cast(y_true, dtype=tf.float32)
     # Calculate fill factor (proportion of non-zero values)
     fill_factor = tf.keras.backend.mean(tf.cast(tf.not_equal(y_true, 0), dtype=tf.float32))
+    # firstly makes a boolean tensor of non-zero, then makes the boolean to numbers and then takes the mean
 
-    # Calculate squared errors
-    squared_errors = tf.math.square(tf.cast(y_true, dtype=tf.float32) - y_pred)
+    # Calculates the normal squared errors
+    squared_errors = tf.math.square(y_true - y_pred)
 
-    # Calculate weight factor based on fill factor
-    weight_factor = scaling * fill_factor
+    # lets the fill factor be dampened or amped
+    weight_factor = scaling / fill_factor
 
-    # Apply weights to positive class
-    weighted_squared_errors = (tf.cast(y_true, dtype=tf.float32) * (weight_factor * squared_errors)
-                               + tf.cast((1 - y_true), dtype=tf.float32) * squared_errors)
+    # applies the weight factor only to where the object is
+    weighted_squared_errors = (y_true * (weight_factor * squared_errors)
+                               + (1 - y_true) * squared_errors)
 
-    # Calculate mean loss over all elements
+    # Calculates the mean over all elements, to make it rank 0
     loss = tf.keras.backend.mean(weighted_squared_errors)
 
     return loss
@@ -124,8 +127,8 @@ def custom_iou(y_true, y_pred):
     Custom IoU (Intersection over Union) evaluation function for each timestep.
 
     Parameters:
-    - y_true: True labels with shape [batch_size, time, row, column]
-    - y_pred: Predicted labels with shape [batch_size, time, row, column]
+    - y_true: True labels with shape [batch_size, time, row, column, color]
+    - y_pred: Predicted labels with shape [batch_size, time, row, column, color]
 
     Returns:
     - IoU for each timestep
@@ -153,5 +156,24 @@ def custom_iou(y_true, y_pred):
     return np.array(iou_per_timestep)
 
 
+class IoU_Maker(tf.keras.metrics.Metric):
+    def __init__(self, n, **kwargs):
+        super(IoU_Maker, self).__init__(name=f'IoU{n}', **kwargs)
+        self.n = n
+        self.intersection = self.add_weight(name='intersection', initializer='zeros')
+        self.union = self.add_weight(name='union', initializer='zeros')
 
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true_timestep = tf.cast(y_true[:, self.n, :, :], tf.float32)
+        y_pred_timestep = tf.cast(y_pred[:, self.n, :, :], tf.float32)
 
+        self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
+        self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
+
+    def result(self):
+        iou_timestep = ks.backend.maximum(1e-10, self.intersection / (self.union - self.intersection))
+        return iou_timestep
+
+    def reset_states(self):
+        self.intersection.assign(0.0)
+        self.union.assign(0.0)

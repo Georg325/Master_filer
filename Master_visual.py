@@ -35,7 +35,7 @@ hist = model.fit(generator, epochs=epochs, callbacks=callbacks)
 print(time.time() - start)
 
 
-plot_training_history(hist, with_val=False)
+plot_training_history(hist)
 
 matrix_lister.display_frames(model, 16, 3)
 
