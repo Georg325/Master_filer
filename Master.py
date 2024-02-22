@@ -8,23 +8,21 @@ matrix_params = {
     'min_max_line_size': [(4, 1), (4, 1)],
     'rotate': False,
     'fades_per_mat': 10,
-    'new_background': True,
+    'new_background': False,
     'shape': 'line',  # 'line', 'triangle', 'face'
 }
 
-model_type = 'res'  # cnn_rnn, cnn, res, dense
+model_type = 'cnn'  # cnn_rnn, cnn, res, dense?, rnn, cnn_lstm, unet, cnn_res
 
 matrix_lister = MatrixLister(**matrix_params)
 #%%
-model, callbacks = matrix_lister.init_model(32, 64, model_type, True)
+model, callbacks = matrix_lister.init_model(32, 64, model_type, threshold=0.5)
 
 matrix_lister.load_model(model, 'auto')  # auto, line, triangle, none
 
-matrix_lister.unique_lines()
-
 #%%
-batch_size = 10
-batch_num = 10
+batch_size = 250
+batch_num = 3
 epochs = 2
 
 generator = matrix_lister.init_generator(model, batch_size, batch_num)
@@ -34,16 +32,7 @@ hist = model.fit(generator, epochs=epochs)
 print(time.time() - start)
 
 #%%
-matrix_lister.save_model(model, 'auto')  # auto, line, triangle, none
+matrix_lister.save_model(model, 'none')  # auto, line, triangle, none
 
 #%%
-
-#matrix_lister.plot_scores(matrix_lister.scores)
-
-matrix_lister.display_frames(model, 16, 0)
-#%%
-#ani = matrix_lister.plot_matrices(model, 50, interval=500)
-#plt.show()
-
-#%%
-#plot_training_history(hist, model_type)
+matrix_lister.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=2, movies_to_show=20)

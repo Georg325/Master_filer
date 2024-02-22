@@ -32,7 +32,8 @@ class MatrixLister:
         self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
         self.kernel = None
         self.model_type = None
-        self.alternative = None
+        self.alternative = False
+        self.ani = None
 
         self.scores = []
 
@@ -134,10 +135,10 @@ class MatrixLister:
         plt.tight_layout()
         return animation
 
-    def display_frames(self, model, num_frames=np.inf, num_to_pred=1):
+    def display_frames(self, model, num_frames=1000, num_to_pred=1):
 
         for _ in range(num_to_pred):
-            num_frames = min(self.fades_per_mat, num_frames)
+            num_frames = max(min(self.fades_per_mat, num_frames), 2)
             input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1)
             fig, axes = plt.subplots(num_frames, 3)  # num_frames rows, 3 columns
             im = []
@@ -171,23 +172,28 @@ class MatrixLister:
 
             plt.tight_layout(pad=0.1)
             plt.show(block=False)
+        plt.show()
 
     def unique_lines(self):
         unique_lines = 0
         for i in range(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1):
             for j in range(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1):
-                possible_row = self.mat_size[0] - i
-                possible_col = self.mat_size[1] - j
+                possible_row = self.mat_size[0] - i + 1
+                possible_col = self.mat_size[1] - j + 1
                 unique_lines += possible_row * possible_col
-
-                possible_row_r = self.mat_size[0] - j
-                possible_col_r = self.mat_size[1] - i
-                unique_lines += possible_row_r * possible_col_r
+                if self.rotate:
+                    possible_row_r = self.mat_size[0] - j + 1
+                    possible_col_r = self.mat_size[1] - i + 1
+                    unique_lines += possible_row_r * possible_col_r
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', alternative=False):
+    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', alternative=False, threshold=None):
+        print(self.unique_lines())
         self.alternative = alternative
+        if threshold is not None:
+            self.alternative = True
+
         self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
@@ -201,7 +207,7 @@ class MatrixLister:
         model = build_model(model_type, parameters)
         optimizer = ks.optimizers.Adam()
         if alternative:
-            metrics = [IoU_Maker(n) for n in range(1, 10)]
+            metrics = [IoU_Maker(n, threshold) for n in range(1, 10)]
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[metrics, Precision(name='precision'), Recall(name='recall')])
         else:
@@ -297,6 +303,102 @@ class MatrixLister:
         plt.show()
         print(scores[-1])
 
+    def plot_training_history(self, training_history_object, list_of_metrics=None):
+        """
+        Input:
+            training_history_object:: Object returned by model.fit() function in keras
+            list_of_metrics        :: A list of metrics to be plotted. Use if you only
+                                      want to plot a subset of the total set of metrics
+                                      in the training history object. By default, it will
+                                      plot all of them in individual subplots.
+        """
+        history_dict = training_history_object.history
+
+        iou_s = []
+        preps = []
+        other = []
+        if list_of_metrics is None:
+            list_of_metrics = [key for key in list(history_dict.keys())]
+            for metric in list_of_metrics:
+                if 'IoU' in metric:
+                    iou_s.append(metric)
+                elif 'precision' in metric or 'recall' in metric:
+                    preps.append(metric)
+                else:
+                    other.append(metric)
+
+        train_hist_df = pd.DataFrame(history_dict)
+        train_keys = other
+        nr_plots = len(other)
+
+        if len(iou_s) > 0:
+            nr_plots += 1
+        if len(preps) > 0:
+            nr_plots += 1
+
+        fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 6))
+
+        plt_nr = 0
+        done = False
+
+        for i in range(len(other)):
+            ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
+            ax[plt_nr].set_ylim(0, 1)
+            ax[plt_nr].set_xlabel('Epoch')
+            ax[plt_nr].set_title(train_keys[plt_nr])
+            ax[plt_nr].grid('on')
+            ax[plt_nr].legend()
+            plt_nr += 1
+
+        for k in range(len(preps)):
+            done = True
+            ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
+            ax[plt_nr].set_ylim(0, 1)
+            ax[plt_nr].set_xlabel('Epoch')
+            ax[plt_nr].set_title('Precision and Recall')
+            ax[plt_nr].grid('on')
+            ax[plt_nr].legend()
+        if done:
+            plt_nr += 1
+            done = False
+
+        for k in range(len(iou_s)):
+            ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
+            ax[plt_nr].set_ylim(0, 1)
+            ax[plt_nr].set_xlabel('Epoch')
+            ax[plt_nr].set_title('IoU')
+            ax[plt_nr].grid('on')
+            ax[plt_nr].legend()
+        if done:
+            plt_nr += 1
+
+        title = f'Metrics from the '
+
+        if not self.rotate:
+            title += 'non rotated, '
+        if not self.new_background:
+            title += 'static background, '
+
+        title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
+        fig.suptitle(title)
+        fig.tight_layout()
+        plt.show()
+
+    def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
+                               movies_to_show=0, interval=500):
+        if self.alternative is not True:
+            self.plot_scores(self.scores)
+
+        if movies_to_plot > 0:
+            self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot)
+
+        if movies_to_show > 0:
+            self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval)
+            plt.show()
+
+        if hist is not None and epochs != 0:
+            self.plot_training_history(hist)
+
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
     rows, cols = mat_size
@@ -321,7 +423,7 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
 
         matrix_with_line = np.ones((rows, cols))
         matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-                         line_start_position[1]:line_start_position[1] + line_size[1]]\
+        line_start_position[1]:line_start_position[1] + line_size[1]] \
             = alfa[i]
 
         '''if alfa[i] < 0.5:
@@ -336,7 +438,7 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
 
         else:
             matrix_with_line[line_start_position[0]:line_start_position[0] + line_size[0],
-                             line_start_position[1]:line_start_position[1] + line_size[1]] = 0
+            line_start_position[1]:line_start_position[1] + line_size[1]] = 0
 
             line_pos_mat.append(np.logical_not(matrix_with_line).astype(int))
 
@@ -396,81 +498,6 @@ def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False,
             line_pos_mat.append(arr)
 
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
-
-
-def plot_training_history(training_history_object, model_type, list_of_metrics=None):
-    """
-    Input:
-        training_history_object:: Object returned by model.fit() function in keras
-        list_of_metrics        :: A list of metrics to be plotted. Use if you only
-                                  want to plot a subset of the total set of metrics
-                                  in the training history object. By default, it will
-                                  plot all of them in individual subplots.
-    """
-    history_dict = training_history_object.history
-
-    iou_s = []
-    preps = []
-    other = []
-    if list_of_metrics is None:
-        list_of_metrics = [key for key in list(history_dict.keys())]
-        for metric in list_of_metrics:
-            if 'IoU' in metric:
-                iou_s.append(metric)
-            elif 'precision' in metric or 'recall' in metric:
-                preps.append(metric)
-            else:
-                other.append(metric)
-
-    train_hist_df = pd.DataFrame(history_dict)
-    train_keys = other
-    nr_plots = len(other)
-
-    if len(iou_s) > 0:
-        nr_plots += 1
-    if len(preps) > 0:
-        nr_plots += 1
-
-    fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 6))
-
-    plt_nr = 0
-    done = False
-
-    for i in range(len(other)):
-        ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
-        ax[plt_nr].set_ylim(0, 1)
-        ax[plt_nr].set_xlabel('Epoch')
-        ax[plt_nr].set_title(train_keys[plt_nr])
-        ax[plt_nr].grid('on')
-        ax[plt_nr].legend()
-        plt_nr += 1
-
-    for k in range(len(preps)):
-        done = True
-        ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
-        ax[plt_nr].set_ylim(0, 1)
-        ax[plt_nr].set_xlabel('Epoch')
-        ax[plt_nr].set_title('Precision and Recall')
-        ax[plt_nr].grid('on')
-        ax[plt_nr].legend()
-    if done:
-        plt_nr += 1
-        done = False
-
-    for k in range(len(iou_s)):
-        ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
-        ax[plt_nr].set_ylim(0, 1)
-        ax[plt_nr].set_xlabel('Epoch')
-        ax[plt_nr].set_title('IoU')
-        ax[plt_nr].grid('on')
-        ax[plt_nr].legend()
-    if done:
-        plt_nr += 1
-
-    fig.suptitle(f'Metrics from the {model_type} model')
-
-    fig.tight_layout()
-    plt.show()
 
 
 def rotater(line):

@@ -157,18 +157,25 @@ def custom_iou(y_true, y_pred):
 
 
 class IoU_Maker(tf.keras.metrics.Metric):
-    def __init__(self, n, **kwargs):
+    def __init__(self, n, threshold=None, **kwargs):
         super(IoU_Maker, self).__init__(name=f'IoU{n}', **kwargs)
         self.n = n
+        self.threshold = threshold
         self.intersection = self.add_weight(name='intersection', initializer='zeros')
         self.union = self.add_weight(name='union', initializer='zeros')
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         y_true_timestep = tf.cast(y_true[:, self.n, :, :], tf.float32)
         y_pred_timestep = tf.cast(y_pred[:, self.n, :, :], tf.float32)
+        if self.threshold is None:
+            self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
+            self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
+        else:
+            y_true_timestep = tf.cast(tf.math.greater_equal(y_true_timestep, self.threshold), tf.float32)
+            y_pred_timestep = tf.cast(tf.math.greater_equal(y_pred_timestep, self.threshold), tf.float32)
 
-        self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
-        self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
+            self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
+            self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
 
     def result(self):
         iou_timestep = ks.backend.maximum(1e-10, self.intersection / (self.union - self.intersection))
