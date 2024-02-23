@@ -15,15 +15,19 @@ def build_model(model_type, parameters):
     elif model_type == 'res':
         return build_res(parameters)
     elif model_type == 'dense':
-        return la.Dense(parameters)
+        return Dense(parameters)
     elif model_type == 'rnn':
         return build_rnn(parameters)
     elif model_type == 'cnn_lstm':
-        return build_cnn_int(parameters)
+        return build_cnn_lstm(parameters)
     elif model_type == 'unet':
         return build_unet(parameters)
     elif model_type == 'cnn_res':
         return build_cnn_res(parameters)
+    elif model_type == 'unet_rnn':
+        return build_unet_rnn(parameters)
+    elif model_type == 'res_dense':
+        return build_res_dense(parameters)
     breakpoint('error')
 
 
@@ -49,15 +53,15 @@ def build_cnn_rnn(parameters):
     return model
 
 
-def build_cnn_int(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+def build_cnn_lstm(parameters):
+    mat_size, filter_, neuron_base, pic_per_mat = parameters
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
 
-    model.add(la.ConvLSTM2D(filter_base * 2, kernel_size=(3, 3), padding='same', activation='relu', return_sequences=True))
+    model.add(la.ConvLSTM2D(filter_*2, kernel_size=(3, 3), padding='same', activation='relu', return_sequences=True))
 
-    model.add(la.ConvLSTM2D(filter_base * 4, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
+    model.add(la.ConvLSTM2D(filter_*4, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
     model.add(la.ConvLSTM2D(1, kernel_size=(2, 2), padding='same', activation='tanh', return_sequences=True))
 
     # la.Reshape to the desired output shape
@@ -162,9 +166,57 @@ def build_unet(parameters):
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base, kernel_size=(2, 2)))(uplist[- 1])
 
     # outputs
-    outputs = la.Conv2D(1, 1, padding='same', activation="softmax")(x)
+    outputs = la.Conv2D(1, 1, padding='same', activation="sigmoid")(x)
 
     # unet model with Keras Functional API
     unet_model = tf.keras.Model(inputs, outputs, name="U-Net")
 
     return unet_model
+
+
+def build_unet_rnn(parameters):
+    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    le = 1
+    # inputs
+    inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
+    downlist = [la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), activation='relu'))(inputs)]
+    for i in range(1, le + 1):
+        downlist.append(
+            la.TimeDistributed(la.Conv2D(filter_base * 2 ** (i + 1), kernel_size=(2, 2), activation='relu'))(
+                downlist[i - 1]))
+    bottle = la.ConvLSTM2D(filter_base * 2 ** (le + 2), kernel_size=(2, 2), activation='relu', return_sequences=True)(
+        downlist[-1])
+
+    # decoder: expanding path - up sample
+    x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1), kernel_size=(2, 2)))(bottle)
+
+    uplist = [la.concatenate([x, downlist[-1]])]
+    for i in range(1, le + 1):
+        x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1 - i), kernel_size=(2, 2)))(uplist[i - 1])
+        uplist.append(la.concatenate([x, downlist[le - i]]))
+
+    x = la.TimeDistributed(la.Conv2DTranspose(filter_base, kernel_size=(2, 2)))(uplist[- 1])
+
+    # outputs
+    outputs = la.Conv2D(1, 1, padding='same', activation="sigmoid")(x)
+
+    # unet model with Keras Functional API
+    unet_model = tf.keras.Model(inputs, outputs, name="U-Net")
+
+    return unet_model
+
+
+def build_res_dense(parameters):
+    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    model = m.Sequential()
+
+    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
+    model.add(ReservoirLayer(500))
+    model.add(la.TimeDistributed(la.Dense(500, activation='tanh')))
+    model.add(ReservoirLayer(500))
+    model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
+
+    # Reshape to the desired output shape
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    return model

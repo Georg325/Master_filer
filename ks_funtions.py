@@ -8,15 +8,13 @@ from abc import ABC
 class DataGenerator(ks.utils.Sequence, ABC):
     """Generates data for Keras"""
 
-    def __init__(self, mat_obj, model, batch_size=500, num_batch=2, alternative=False):
+    def __init__(self, mat_obj, batch_size=500, num_batch=2, val=False):
         """Initialization"""
         super().__init__()
         self.mat_obj = mat_obj
-        self.model = model
         self.batch_size = batch_size
         self.num_batch = num_batch
-        self.alternative = alternative
-        self.mat_obj.clear_score()
+        self.val = val
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -25,15 +23,39 @@ class DataGenerator(ks.utils.Sequence, ABC):
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate data
-        x, y, _ = self.mat_obj.create_matrix_in_list(self.batch_size)
+        x, y, _ = self.mat_obj.create_matrix_in_list(self.batch_size, self.val)
         # self.mat_obj.randomize_kernel((0.7, 0.4))
         return np.expand_dims(x, -1), np.expand_dims(y, -1)
 
-    def on_epoch_end(self):
-        """Updates indexes after each epoch"""
-        if not self.alternative:
-            self.mat_obj.eval(self.model, self.batch_size)
-        return
+
+class IoUMaker(tf.keras.metrics.Metric):
+    def __init__(self, n, threshold=0, **kwargs):
+        super(IoUMaker, self).__init__(name=f'IoU{n}', **kwargs)
+        self.n = n
+        self.threshold = threshold
+        self.intersection = self.add_weight(name='intersection', initializer='zeros')
+        self.union = self.add_weight(name='union', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true_timestep = tf.cast(y_true[:, self.n, :, :], tf.float32)
+        y_pred_timestep = tf.cast(y_pred[:, self.n, :, :], tf.float32)
+        if self.threshold <= 0.1:
+            self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
+            self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
+        else:
+            y_true_timestep = tf.cast(tf.math.greater_equal(y_true_timestep, self.threshold), tf.float32)
+            y_pred_timestep = tf.cast(tf.math.greater_equal(y_pred_timestep, self.threshold), tf.float32)
+
+            self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
+            self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
+
+    def result(self):
+        iou_timestep = ks.backend.maximum(1e-10, self.intersection / (self.union - self.intersection))
+        return iou_timestep
+
+    def reset_state(self):
+        self.intersection.assign(0.0)
+        self.union.assign(0.0)
 
 
 def custom_weighted_loss(y_true, y_pred, scaling=1.0):
@@ -154,33 +176,3 @@ def custom_iou(y_true, y_pred):
         iou_per_timestep.append(iou_timestep)
 
     return np.array(iou_per_timestep)
-
-
-class IoU_Maker(tf.keras.metrics.Metric):
-    def __init__(self, n, threshold=None, **kwargs):
-        super(IoU_Maker, self).__init__(name=f'IoU{n}', **kwargs)
-        self.n = n
-        self.threshold = threshold
-        self.intersection = self.add_weight(name='intersection', initializer='zeros')
-        self.union = self.add_weight(name='union', initializer='zeros')
-
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        y_true_timestep = tf.cast(y_true[:, self.n, :, :], tf.float32)
-        y_pred_timestep = tf.cast(y_pred[:, self.n, :, :], tf.float32)
-        if self.threshold is None:
-            self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
-            self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
-        else:
-            y_true_timestep = tf.cast(tf.math.greater_equal(y_true_timestep, self.threshold), tf.float32)
-            y_pred_timestep = tf.cast(tf.math.greater_equal(y_pred_timestep, self.threshold), tf.float32)
-
-            self.intersection.assign_add(tf.reduce_sum(tf.math.multiply(y_true_timestep, y_pred_timestep)))
-            self.union.assign_add(tf.reduce_sum(tf.math.add(y_true_timestep, y_pred_timestep)))
-
-    def result(self):
-        iou_timestep = ks.backend.maximum(1e-10, self.intersection / (self.union - self.intersection))
-        return iou_timestep
-
-    def reset_state(self):
-        self.intersection.assign(0.0)
-        self.union.assign(0.0)

@@ -17,37 +17,42 @@ import raster_geometry as rg
 rng = rd.SystemRandom()
 
 
-class MatrixLister:
-    def __init__(self, mat_size, strength_kernel, min_max_line_size,
-                 rotate, fades_per_mat, new_background, shape):
+class MovieDataHandler:
+    def __init__(self, mat_size, fades_per_mat, strength_kernel, size, rotate, new_background, shape,
+                 val, val_strength_kernel=0, val_size=0, val_rotate=0, val_new_background=0, val_shape=0):
 
         self.mat_size = mat_size
-        self.strength, self.kernel_size = strength_kernel
-        self.min_max_line_size = min_max_line_size
-        self.rotate = rotate
         self.fades_per_mat = fades_per_mat
+
+        self.size = size
+        self.rotate = rotate
         self.new_background = new_background
         self.shape = shape
 
-        self.con_matrix, self.line_pos_mat, self.con_alfa = None, None, None
-        self.kernel = None
+        self.kernel = set_kernel(strength_kernel)
+
+        self.val = val
+        self.val_size = val_size
+        self.val_rotate = val_rotate
+        self.val_new_background = val_new_background
+        self.val_shape = val_shape
+
+        self.val_kernel = set_kernel(val_strength_kernel)
+
         self.model_type = None
-        self.alternative = False
         self.ani = None
 
         self.scores = []
-
-        self.randomize_kernel((self.strength, self.strength))
 
     @classmethod
     def from_dict(cls, params):
         return cls(**params)
 
-    def generate_pred_data(self, model, num_to_pred, concatenate=True):
-        self.con_matrix, self.line_pos_mat, self.con_alfa = self.create_matrix_in_list(num_to_pred)
+    def generate_pred_data(self, model, num_to_pred, val=False, concatenate=True):
+        con_matrix, line_pos_mat, _ = self.create_matrix_in_list(num_to_pred, val)
 
-        input_matrix = np.array(self.con_matrix[:num_to_pred * self.fades_per_mat])
-        true_matrix = self.line_pos_mat[:num_to_pred * self.fades_per_mat]
+        input_matrix = np.array(con_matrix[:num_to_pred * self.fades_per_mat])
+        true_matrix = line_pos_mat[:num_to_pred * self.fades_per_mat]
 
         input_data = np.expand_dims(np.array([matrix for matrix in input_matrix]), -1)
         true_matrix = np.expand_dims(np.array([matrix for matrix in true_matrix]), -1)
@@ -64,36 +69,43 @@ class MatrixLister:
         else:
             return np.array(input_matrix), np.array(true_matrix), np.array(pred)
 
-    def create_matrix_in_list(self, numb_of_time_series):
+    def create_matrix_in_list(self, numb_of_time_series, val=False):
         list_matrix = []
         list_pos_mat = []
         list_alfa = []
 
+        if val:
+            size, rotate, new_background, shape, kernel = (self.val_size, self.val_rotate, self.val_new_background,
+                                                           self.val_shape, self.val_kernel)
+        else:
+            size, rotate, new_background, shape, kernel = (self.size, self.rotate, self.new_background,
+                                                           self.shape, self.kernel)
+
         for k in range(0, numb_of_time_series):
-            if self.shape == 'triangle':
-                sfb = matrix_triangle_maker(self.mat_size, self.kernel,
+            if shape == 'triangle':
+                sfb = matrix_triangle_maker(self.mat_size, kernel,
                                             self.fades_per_mat,
-                                            new_background=self.new_background)
+                                            new_background=new_background)
 
-            elif self.shape == 'face':
-                sfb = matrix_triangle_maker(self.mat_size, self.kernel,
+            elif shape == 'face':
+                sfb = matrix_triangle_maker(self.mat_size, kernel,
                                             self.fades_per_mat,
-                                            new_background=self.new_background, alternative=True)
+                                            new_background=new_background, alternative=True)
 
-            elif self.shape == 'line':
-                if self.rotate:  # makes the line
+            elif shape == 'line':
+                if rotate:  # makes the line
                     line_size = rotater((
-                        rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
-                        rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1])))
+                        rng.randint(size[0][0], size[1][0]),
+                        rng.randint(size[0][1], size[1][1])))
 
                 else:  # does not rotate the line
                     line_size = (
-                        rng.randint(self.min_max_line_size[0][0], self.min_max_line_size[1][0]),
-                        rng.randint(self.min_max_line_size[0][1], self.min_max_line_size[1][1]))
+                        rng.randint(size[0][0], size[1][0]),
+                        rng.randint(size[0][1], size[1][1]))
 
-                sfb = matrix_maker(self.mat_size, self.kernel, line_size,
+                sfb = matrix_maker(self.mat_size, kernel, line_size,
                                    self.fades_per_mat,
-                                   new_background=self.new_background)
+                                   new_background=new_background)
 
             else:
                 print(f'{self.shape} is invalid')
@@ -116,21 +128,32 @@ class MatrixLister:
             # Plot Input Matrix
             im = [axes[0].imshow(input_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)]
             axes[0].set_title('Input Matrix')
-            axes[0].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
+            # axes[0].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
 
             # Plot True Line Position Matrix
             im.append(axes[1].imshow(true_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
             axes[1].set_title('True Line Position Matrix')
-            axes[1].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
+            # axes[1].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
             # Plot Predicted Line Position Matrix
             im.append(
                 axes[2].imshow(predicted_line_pos_mat[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
             axes[2].set_title('Predicted Line Position Matrix')
-            axes[2].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
+            # axes[2].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
 
             return im
 
         animation = FuncAnimation(fig, update, frames=len(input_matrix), interval=interval, repeat=False, blit=True)
+
+        title = f'Prediction with '
+
+        if not self.rotate:
+            title += 'non rotated, '
+        if not self.new_background:
+            title += 'static background, '
+
+        title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
+
+        fig.suptitle(title)
 
         plt.tight_layout()
         return animation
@@ -170,14 +193,25 @@ class MatrixLister:
                 axes[i, 2].set_xlabel('')
                 axes[i, 2].set_ylabel('')
 
-            plt.tight_layout(pad=0.1)
+            plt.tight_layout(pad=0.15)
             plt.show(block=False)
+
+            title = f'Movie from the '
+
+            if not self.rotate:
+                title += 'non rotated, '
+            if not self.new_background:
+                title += 'static background, '
+
+            title += f'{self.model_type} model'
+
+            fig.suptitle(title)
         plt.show()
 
     def unique_lines(self):
         unique_lines = 0
-        for i in range(self.min_max_line_size[0][0], self.min_max_line_size[1][0] + 1):
-            for j in range(self.min_max_line_size[0][1], self.min_max_line_size[1][1] + 1):
+        for i in range(self.size[0][0], self.size[1][0] + 1):
+            for j in range(self.size[0][1], self.size[1][1] + 1):
                 possible_row = self.mat_size[0] - i + 1
                 possible_col = self.mat_size[1] - j + 1
                 unique_lines += possible_row * possible_col
@@ -188,37 +222,36 @@ class MatrixLister:
 
         print('Possible lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', alternative=False, threshold=None):
-        print(self.unique_lines())
-        self.alternative = alternative
-        if threshold is not None:
-            self.alternative = True
+    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', threshold=0, iou_s=True):
+        self.unique_lines()
 
         self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                                  monitor='loss', mode='min', save_best_only=True)
 
-        model_early_stopp_callback = ks.callbacks.EarlyStopping(monitor='loss', patience=3, min_delta=0.001,
+        model_early_stopp_callback = ks.callbacks.EarlyStopping(monitor='loss', patience=8, min_delta=0.001,
                                                                 restore_best_weights=True, start_from_epoch=20)
 
         parameters = self.mat_size, cnn_size, rnn_size, self.fades_per_mat
 
         model = build_model(model_type, parameters)
         optimizer = ks.optimizers.Adam()
-        if alternative:
-            metrics = [IoU_Maker(n, threshold) for n in range(1, 10)]
+        if iou_s:
+            metrics = [IoUMaker(n, threshold) for n in range(1, 10)]
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[metrics, Precision(name='precision'), Recall(name='recall')])
         else:
-
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
 
         return model, [model_checkpoint_callback, model_early_stopp_callback]
 
-    def init_generator(self, model, batch_size, num_batch):
-        return DataGenerator(self, model, batch_size, num_batch, self.alternative)
+    def init_generator(self, batch_size, num_batch):
+        if self.val:
+            return DataGenerator(self, batch_size, num_batch), DataGenerator(self, batch_size, num_batch, self.val)
+        else:
+            return DataGenerator(self, batch_size, num_batch), None
 
     def load_model(self, model, weights_shape='auto'):
 
@@ -236,6 +269,12 @@ class MatrixLister:
                     print('Loaded line weights')
                 except ValueError:
                     print('Could not load line weights')
+            elif path.exists('standard.weights.h5'):
+                try:
+                    model.load_weights(f'standard.weights.h5')
+                    print('Loaded callback weights')
+                except ValueError:
+                    print('Could not load callback weights')
             else:
                 print('Did not find any weights')
 
@@ -246,8 +285,9 @@ class MatrixLister:
             model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Loaded line weights')
 
-    def save_model(self, model, weights_shape='auto'):
-
+    def save_model(self, model, weights_shape='auto', epochs=0):
+        if epochs == 0:
+            return
         if weights_shape == 'auto':
 
             if self.shape == 'triangle':
@@ -268,42 +308,7 @@ class MatrixLister:
             model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Saved line weights')
 
-    def randomize_kernel(self, strength_range):
-        strength = np.random.uniform(low=strength_range[0], high=strength_range[1])
-        self.kernel = np.fromfunction(
-            lambda x, y: (1 / (2 * np.pi * strength ** 2)) * np.exp(
-                -((x - (self.kernel_size - 1) / 2) ** 2 +
-                  (y - (self.kernel_size - 1) / 2) ** 2) / (2 * strength ** 2)),
-            (self.kernel_size, self.kernel_size))
-        self.kernel = self.kernel / np.sum(self.kernel)
-
-    def eval(self, model, batch):
-        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, batch, False)
-        scores = custom_iou(true_matrix, predicted_line_pos_mat)
-        self.scores.append(scores)
-        return scores
-
-    def clear_score(self):
-        self.scores = []
-
-    def plot_scores(self, all_f1_scores):
-        if self.alternative:
-            return
-        scores = np.transpose(np.array(all_f1_scores))
-        plt.figure(figsize=(10, 6))
-
-        for i, iou_scores in enumerate(scores):
-            plt.plot(iou_scores, label=f"Frame {i}")
-
-        plt.title(f"IoU Scores for {self.model_type} on {self.mat_size} grid")
-        plt.xlabel('epoch')
-        plt.ylabel('IoU Score')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-        print(scores[-1])
-
-    def plot_training_history(self, training_history_object, list_of_metrics=None):
+    def plot_training_history(self, training_history_object):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -317,15 +322,26 @@ class MatrixLister:
         iou_s = []
         preps = []
         other = []
-        if list_of_metrics is None:
-            list_of_metrics = [key for key in list(history_dict.keys())]
-            for metric in list_of_metrics:
-                if 'IoU' in metric:
-                    iou_s.append(metric)
-                elif 'precision' in metric or 'recall' in metric:
-                    preps.append(metric)
-                else:
-                    other.append(metric)
+
+        val_iou_s = []
+        val_preps = []
+        val_other = []
+
+        list_of_metrics = [key for key in list(history_dict.keys())]
+
+        for metric in list_of_metrics:
+            if 'val_IoU' in metric:
+                val_iou_s.append(metric)
+            elif 'val_precision' in metric or 'val_recall' in metric:
+                val_preps.append(metric)
+            elif 'val_' in metric:
+                val_other.append(metric)
+            elif 'IoU' in metric:
+                iou_s.append(metric)
+            elif 'precision' in metric or 'recall' in metric:
+                preps.append(metric)
+            else:
+                other.append(metric)
 
         train_hist_df = pd.DataFrame(history_dict)
         train_keys = other
@@ -335,6 +351,8 @@ class MatrixLister:
             nr_plots += 1
         if len(preps) > 0:
             nr_plots += 1
+            if self.val:
+                nr_plots += 1
 
         fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 6))
 
@@ -343,6 +361,8 @@ class MatrixLister:
 
         for i in range(len(other)):
             ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
+            if self.val:
+                ax[plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
             ax[plt_nr].set_ylim(0, 1)
             ax[plt_nr].set_xlabel('Epoch')
             ax[plt_nr].set_title(train_keys[plt_nr])
@@ -353,6 +373,8 @@ class MatrixLister:
         for k in range(len(preps)):
             done = True
             ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
+            if self.val:
+                ax[plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
             ax[plt_nr].set_ylim(0, 1)
             ax[plt_nr].set_xlabel('Epoch')
             ax[plt_nr].set_title('Precision and Recall')
@@ -363,6 +385,7 @@ class MatrixLister:
             done = False
 
         for k in range(len(iou_s)):
+            done = True
             ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
             ax[plt_nr].set_ylim(0, 1)
             ax[plt_nr].set_xlabel('Epoch')
@@ -372,6 +395,16 @@ class MatrixLister:
         if done:
             plt_nr += 1
 
+        if self.val:
+            for k in range(len(iou_s)):
+                ax[plt_nr].plot(np.array(train_hist_df[val_iou_s[k]]), label=f'Frame {k + 1}')
+                ax[plt_nr].set_ylim(0, 1)
+                ax[plt_nr].set_xlabel('Epoch')
+                ax[plt_nr].set_title('val_IoU')
+                ax[plt_nr].grid('on')
+                ax[plt_nr].legend()
+            if done:
+                plt_nr += 1
         title = f'Metrics from the '
 
         if not self.rotate:
@@ -380,15 +413,13 @@ class MatrixLister:
             title += 'static background, '
 
         title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
+
         fig.suptitle(title)
         fig.tight_layout()
         plt.show()
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
                                movies_to_show=0, interval=500):
-        if self.alternative is not True:
-            self.plot_scores(self.scores)
-
         if movies_to_plot > 0:
             self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot)
 
@@ -504,6 +535,16 @@ def rotater(line):
     if rng.randint(0, 1):
         return line[::-1]
     return line
+
+
+def set_kernel(str_ker):
+    strength, kernel_size = str_ker
+    kernel = np.fromfunction(
+        lambda x, y: (1 / (2 * np.pi * strength ** 2)) * np.exp(
+            -((x - (kernel_size - 1) / 2) ** 2 +
+              (y - (kernel_size - 1) / 2) ** 2) / (2 * strength ** 2)),
+        (kernel_size, kernel_size))
+    return kernel / np.sum(kernel)
 
 
 def plots(matrix, interval=200):
