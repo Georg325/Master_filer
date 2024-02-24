@@ -237,9 +237,7 @@ class MovieDataHandler:
                         unique_lines += possible_row_r * possible_col_r
             print('Possible val lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', threshold=0, iou_s=True):
-        self.unique_lines()
-
+    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', threshold=0, iou_s=True, info=False):
         self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
@@ -260,6 +258,10 @@ class MovieDataHandler:
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
 
+        if info:
+            self.unique_lines()
+            model.summary()
+
         return model, [model_checkpoint_callback, model_early_stopp_callback]
 
     def init_generator(self, batch_size, num_batch):
@@ -269,8 +271,9 @@ class MovieDataHandler:
             return DataGenerator(self, batch_size, num_batch), None
 
     def load_model(self, model, weights_shape='auto'):
-
-        if weights_shape == 'auto':
+        if weights_shape == 'none':
+            return
+        elif weights_shape == 'auto':
             if path.exists(f'{self.mat_size}{self.model_type}triangle.weights.h5') and self.shape == 'triangle':
                 try:
                     model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
@@ -292,18 +295,26 @@ class MovieDataHandler:
                     print('Could not load callback weights')
             else:
                 print('Did not find any weights')
-
         elif weights_shape == 'triangle':
             model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
             print('Loaded triangle weights')
         elif weights_shape == 'line':
             model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Loaded line weights')
+        else:
+            if path.exists(f'{weights_shape}.weights.h5'):
+                try:
+                    model.load_weights(f'{weights_shape}.weights.h5')
+                    print(f'Loaded {weights_shape}.weights.h5')
+                except ValueError:
+                    print('Could not load custom weights')
+            else:
+                print(f'Did not find weights with name {weights_shape}.weights.h5')
 
     def save_model(self, model, weights_shape='auto', epochs=0):
-        if epochs == 0:
+        if epochs == 0 or weights_shape == 'none':
             return
-        if weights_shape == 'auto':
+        elif weights_shape == 'auto':
 
             if self.shape == 'triangle':
                 model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
@@ -322,6 +333,10 @@ class MovieDataHandler:
         elif weights_shape == 'line':
             model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Saved line weights')
+
+        else:
+            model.save_weights(f'{weights_shape}.weights.h5')
+            print(f'Saved custom weights with name {weights_shape}.weights.h5')
 
     def plot_training_history(self, training_history_object):
         """
