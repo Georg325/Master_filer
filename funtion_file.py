@@ -19,7 +19,7 @@ rng = rd.SystemRandom()
 
 class MovieDataHandler:
     def __init__(self, mat_size, fades_per_mat, strength_kernel, size, rotate, new_background, shape,
-                 val, val_strength_kernel=0, val_size=0, val_rotate=0, val_new_background=0, val_shape=0):
+                 val, val_strength_kernel=None, val_size=None, val_rotate=0, val_new_background=0, val_shape=0):
 
         self.mat_size = mat_size
         self.fades_per_mat = fades_per_mat
@@ -119,8 +119,8 @@ class MovieDataHandler:
 
         return tf.convert_to_tensor(list_matrix), list_pos_mat, list_alfa
 
-    def plot_matrices(self, model, num_to_pred, interval=500):
-        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred)
+    def plot_matrices(self, model, num_to_pred, interval=500, val=False):
+        input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred, val)
 
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
 
@@ -150,19 +150,22 @@ class MovieDataHandler:
             title += 'non rotated, '
         if not self.new_background:
             title += 'static background, '
+        if val:
+            title += 'val data, '
 
-        title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
+        title += f' {self.model_type} model on {self.mat_size} matrix'
 
         fig.suptitle(title)
 
         plt.tight_layout()
+        plt.show()
         return animation
 
-    def display_frames(self, model, num_frames=1000, num_to_pred=1):
+    def display_frames(self, model, num_frames=1000, num_to_pred=1, val=False):
 
         for _ in range(num_to_pred):
             num_frames = max(min(self.fades_per_mat, num_frames), 2)
-            input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1)
+            input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1, val)
             fig, axes = plt.subplots(num_frames, 3)  # num_frames rows, 3 columns
             im = []
             for i in range(num_frames):
@@ -202,11 +205,11 @@ class MovieDataHandler:
                 title += 'non rotated, '
             if not self.new_background:
                 title += 'static background, '
-
+            if val:
+                title += 'val data, '
             title += f'{self.model_type} model'
 
             fig.suptitle(title)
-        plt.show()
 
     def unique_lines(self):
         unique_lines = 0
@@ -221,6 +224,18 @@ class MovieDataHandler:
                     unique_lines += possible_row_r * possible_col_r
 
         print('Possible lines: ', unique_lines)
+        if self.val:
+            unique_lines = 0
+            for i in range(self.val_size[0][0], self.val_size[1][0] + 1):
+                for j in range(self.val_size[0][1], self.val_size[1][1] + 1):
+                    possible_row = self.mat_size[0] - i + 1
+                    possible_col = self.mat_size[1] - j + 1
+                    unique_lines += possible_row * possible_col
+                    if self.val_rotate:
+                        possible_row_r = self.mat_size[0] - j + 1
+                        possible_col_r = self.mat_size[1] - i + 1
+                        unique_lines += possible_row_r * possible_col_r
+            print('Possible val lines: ', unique_lines)
 
     def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', threshold=0, iou_s=True):
         self.unique_lines()
@@ -419,13 +434,21 @@ class MovieDataHandler:
         plt.show()
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
-                               movies_to_show=0, interval=500):
+                               movies_to_show=0, with_val=False, both=False, interval=500):
         if movies_to_plot > 0:
-            self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot)
+            if both:
+                self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=True)
+                self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=False)
+            else:
+                self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=with_val)
+            plt.show()
 
         if movies_to_show > 0:
-            self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval)
-            plt.show()
+            if both:
+                self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=True)
+                self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=False)
+            else:
+                self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
             self.plot_training_history(hist)

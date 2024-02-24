@@ -8,42 +8,42 @@ matrix_params = {
 
     'strength_kernel': (1, 3),
     'size': [(4, 1), (4, 1)],
-    'rotate': False,
-    'new_background': True,
+    'rotate': True,
+    'new_background': False,
     'shape': 'line',  # 'line', 'triangle', 'face'
 
     'val': True,
 
     'val_strength_kernel': (1, 3),
-    'val_size': [(4, 1), (4, 1)],
+    'val_size': [(3, 3), (3, 3)],
     'val_rotate': True,
-    'val_new_background': True,
+    'val_new_background': False,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
 }
 # dense, cnn, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense
-model_type = 'cnn_rnn'
+model_type = 'dense'
 
-matrix_lister = MovieDataHandler(**matrix_params)
+datahandler = MovieDataHandler(**matrix_params)
 #%%
-model, callbacks = matrix_lister.init_model(32, 64, model_type, threshold=0.5)
+model, callbacks = datahandler.init_model(32, 64, model_type, threshold=0.5)
 
-matrix_lister.load_model(model, 'none')  # auto, line, triangle, none
+datahandler.load_model(model, 'none')  # auto, line, triangle, none
 
 #%%
 model.summary()
 
 batch_size = 300
-batch_num = 15
-epochs = 50
+batch_num = 30
+epochs = 0
 
-generator, val_gen = matrix_lister.init_generator(batch_size, batch_num)
+generator, val_gen = datahandler.init_generator(batch_size, batch_num)
 
 start = time.time()
 hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
-print(time.time() - start)
+print(f'{time.time() - start:.2f} s')
 
 #%%
-matrix_lister.save_model(model, 'auto', epochs)  # auto, line, triangle, none
+datahandler.save_model(model, 'none', epochs)  # auto, line, triangle, none
 
 #%%
-matrix_lister.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0)
+datahandler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=True)
