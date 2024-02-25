@@ -3,7 +3,7 @@ from keras import models as m
 from keras import layers as la
 import tensorflow as tf
 
-from resoviarfuntion import ReservoirLayer, ComplexReservoirLayer
+from resoviarfuntion import ReservoirLayer
 
 
 def build_model(model_type, parameters):
@@ -28,6 +28,8 @@ def build_model(model_type, parameters):
         return build_unet_rnn(parameters)
     elif model_type == 'res_dense':
         return build_res_dense(parameters)
+    elif model_type == 'deep_res':
+        return build_deep_res(parameters)
     breakpoint('error')
 
 
@@ -59,9 +61,9 @@ def build_cnn_lstm(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
 
-    model.add(la.ConvLSTM2D(filter_*2, kernel_size=(3, 3), padding='same', activation='relu', return_sequences=True))
+    model.add(la.ConvLSTM2D(filter_ * 2, kernel_size=(3, 3), padding='same', activation='relu', return_sequences=True))
 
-    model.add(la.ConvLSTM2D(filter_*4, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
+    model.add(la.ConvLSTM2D(filter_ * 4, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
     model.add(la.ConvLSTM2D(1, kernel_size=(2, 2), padding='same', activation='tanh', return_sequences=True))
 
     # la.Reshape to the desired output shape
@@ -91,7 +93,7 @@ def Dense(parameters):
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
     model.add(la.TimeDistributed(la.Dense(64, activation='tanh')))
-    model.add(la.TimeDistributed(la.Dense(64*2, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(64 * 2, activation='tanh')))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='sigmoid')))
 
     # Reshape to the desired output shape
@@ -119,12 +121,12 @@ def build_cnn_res(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), padding='same', activation='relu')))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size)*filter_base)))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * filter_base)))
     model.add(ReservoirLayer(750))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
 
@@ -151,16 +153,19 @@ def build_unet(parameters):
     # inputs
     inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
     downlist = [la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), activation='relu'))(inputs)]
-    for i in range(1, le+1):
-        downlist.append(la.TimeDistributed(la.Conv2D(filter_base * 2 ** (i + 1), kernel_size=(2, 2), activation='relu'))(downlist[i - 1]))
-    bottle = la.TimeDistributed(la.Conv2D(filter_base * 2 ** (le + 2), kernel_size=(2, 2), activation='relu'))(downlist[-1])
+    for i in range(1, le + 1):
+        downlist.append(
+            la.TimeDistributed(la.Conv2D(filter_base * 2 ** (i + 1), kernel_size=(2, 2), activation='relu'))(
+                downlist[i - 1]))
+    bottle = la.TimeDistributed(la.Conv2D(filter_base * 2 ** (le + 2), kernel_size=(2, 2), activation='relu'))(
+        downlist[-1])
 
     # decoder: expanding path - up sample
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1), kernel_size=(2, 2)))(bottle)
 
     uplist = [la.concatenate([x, downlist[-1]])]
-    for i in range(1, le+1):
-        x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1 - i), kernel_size=(2, 2)))(uplist[i-1])
+    for i in range(1, le + 1):
+        x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1 - i), kernel_size=(2, 2)))(uplist[i - 1])
         uplist.append(la.concatenate([x, downlist[le - i]]))
 
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base, kernel_size=(2, 2)))(uplist[- 1])
@@ -219,4 +224,20 @@ def build_res_dense(parameters):
 
     # Reshape to the desired output shape
     model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    return model
+
+
+def build_deep_res(parameters):
+    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+
+    inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
+    x = [la.Reshape((pic_per_mat, np.prod(mat_size)))(inputs)]
+
+    for _ in range(4):
+        x.append(ReservoirLayer(250)(x[-1]))
+    con = la.concatenate(x[1:])
+    den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
+    output = la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)))(den)
+    model = tf.keras.Model(inputs=inputs, outputs=output)
+
     return model

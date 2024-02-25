@@ -237,7 +237,7 @@ class MovieDataHandler:
                         unique_lines += possible_row_r * possible_col_r
             print('Possible val lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', threshold=0, iou_s=True, info=False):
+    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', iou_s=True, info=False):
         self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
         model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
@@ -251,7 +251,7 @@ class MovieDataHandler:
         model = build_model(model_type, parameters)
         optimizer = ks.optimizers.Adam()
         if iou_s:
-            metrics = [IoUMaker(n, threshold) for n in range(1, 10)]
+            metrics = [IoUMaker(n) for n in range(1, 10)]
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[metrics, Precision(name='precision'), Recall(name='recall')])
         else:
@@ -338,7 +338,7 @@ class MovieDataHandler:
             model.save_weights(f'{weights_shape}.weights.h5')
             print(f'Saved custom weights with name {weights_shape}.weights.h5')
 
-    def plot_training_history(self, training_history_object):
+    def plot_training_history(self, training_history_object, show, name_note):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -436,20 +436,26 @@ class MovieDataHandler:
             if done:
                 plt_nr += 1
         title = f'Metrics from the '
-
+        filename = ''
         if not self.rotate:
             title += 'non rotated, '
+            filename += 'non rotated, '
         if not self.new_background:
             title += 'static background, '
+            filename += 'static background, '
 
         title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
+        filename += f' {self.model_type} on {self.mat_size} with {name_note}'
 
         fig.suptitle(title)
         fig.tight_layout()
-        plt.show()
+        if show:
+            plt.show(title)
+        else:
+            plt.savefig(filename)
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
-                               movies_to_show=0, with_val=False, both=False, interval=500):
+                               movies_to_show=0, with_val=False, both=False, interval=500, show=True, name_note=''):
         if movies_to_plot > 0:
             if both:
                 self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=True)
@@ -466,7 +472,7 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist)
+            self.plot_training_history(hist, show, name_note)
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -605,3 +611,51 @@ def full_triangle(a, b, c):
     ab = rg.bresenham_line(a, b, endpoint=True)
     for x in set(ab):
         yield from rg.bresenham_line(c, x, endpoint=True)
+
+
+def train_multiple(matrix_params, model_types, train_param, run=False, name_note=''):
+    if run:
+        batch_size, batch_num, epochs = train_param
+        data_handler = MovieDataHandler(**matrix_params)
+        for model_type in model_types:
+            model, callbacks = data_handler.init_model(32, 64, model_type, iou_s=True, info=False)
+            generator, val_gen = data_handler.init_generator(batch_size, batch_num)
+            hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
+            data_handler.save_model(model, 'auto', epochs)
+            data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
+                                                both=True, show=False, name_note=name_note)
+
+
+if __name__ == '__main__':
+    matrix_params = {
+        'mat_size': (6, 6),
+        'fades_per_mat': 10,
+
+        'strength_kernel': (1, 3),
+        'size': [(4, 1), (4, 1)],
+        'rotate': True,
+        'new_background': True,
+        'shape': 'line',  # 'line', 'triangle', 'face'
+
+        'val': True,
+
+        'val_strength_kernel': (1, 3),
+        'val_size': [(3, 3), (3, 3)],
+        'val_rotate': True,
+        'val_new_background': True,
+        'val_shape': 'line',  # 'line', 'triangle', 'face'
+    }
+
+    # 'dense', 'cnn', 'cnn_lstm',
+    # 'res', 'cnn_res', 'res_dense',
+    # 'rnn', 'cnn_rnn',
+    # 'unet', 'unet_rnn'
+    model_types = ['cnn_rnn', 'res', 'res_dense']
+
+    train_param = [
+        250,  # batch_size =
+        15,  # batch_num =
+        60,  # epochs =
+    ]
+
+    train_multiple(matrix_params, model_types, train_param, run=True, name_note='val_cube')

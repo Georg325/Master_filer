@@ -29,10 +29,10 @@ class DataGenerator(ks.utils.Sequence, ABC):
 
 
 class IoUMaker(tf.keras.metrics.Metric):
-    def __init__(self, n, threshold=0, **kwargs):
+    def __init__(self, n, **kwargs):
         super(IoUMaker, self).__init__(name=f'IoU{n}', **kwargs)
         self.n = n
-        self.threshold = threshold
+        self.threshold = 0.5
         self.intersection = self.add_weight(name='intersection', initializer='zeros')
         self.union = self.add_weight(name='union', initializer='zeros')
 
