@@ -3,7 +3,7 @@ from keras import models as m
 from keras import layers as la
 import tensorflow as tf
 
-from resoviarfuntion import ReservoirLayer
+from ml_funtions import ReservoirLayer
 
 
 def build_model(model_type, parameters):
@@ -33,8 +33,25 @@ def build_model(model_type, parameters):
     breakpoint('error')
 
 
+def build_cnn(parameters):
+    mat_size, cnn_scaling, neuron_base, pic_per_mat = parameters
+    filter_base = round(32 * cnn_scaling)
+    model = m.Sequential()
+
+    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
+    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(filter_base * 2, kernel_size=(3, 3), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(filter_base * 4, kernel_size=(2, 2), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(1, kernel_size=(2, 2), padding='same', activation='tanh')))
+
+    # la.Reshape to the desired output shape
+    model.add(la.Reshape((pic_per_mat, mat_size[0], mat_size[1], 1)))
+    return model
+
+
 def build_cnn_rnn(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, neuron_base, pic_per_mat = parameters
+    filter_base = round(32 * cnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -56,7 +73,8 @@ def build_cnn_rnn(parameters):
 
 
 def build_cnn_lstm(parameters):
-    mat_size, filter_, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+    filter_ = round(32 * cnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -71,23 +89,41 @@ def build_cnn_lstm(parameters):
     return model
 
 
-def build_cnn(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+def build_res_dense(parameters):
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base * 2, kernel_size=(3, 3), padding='same', activation='relu')))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base * 4, kernel_size=(2, 2), padding='same', activation='relu')))
-    model.add(la.TimeDistributed(la.Conv2D(1, kernel_size=(2, 2), padding='same', activation='tanh')))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
+    model.add(ReservoirLayer(500))
+    model.add(la.TimeDistributed(la.Dense(500, activation='tanh')))
+    model.add(ReservoirLayer(500))
+    model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
-    # la.Reshape to the desired output shape
-    model.add(la.Reshape((pic_per_mat, mat_size[0], mat_size[1], 1)))
+    # Reshape to the desired output shape
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    return model
+
+
+def build_deep_res(parameters):
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+
+    inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
+    x = [la.Reshape((pic_per_mat, np.prod(mat_size)))(inputs)]
+
+    for _ in range(3):
+        x.append(ReservoirLayer(250)(x[-1]))
+    con = la.concatenate(x[1:])
+    den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
+    output = la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)))(den)
+    model = tf.keras.Model(inputs=inputs, outputs=output)
+
     return model
 
 
 def Dense(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -116,12 +152,13 @@ def build_res(parameters):
 
 
 def build_cnn_res(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+    cnn_filter = round(32 * cnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), padding='same', activation='relu')))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * filter_base)))
+    model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter)))
     model.add(ReservoirLayer(750))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
@@ -131,7 +168,8 @@ def build_cnn_res(parameters):
 
 
 def build_rnn(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+    neuron_base = round(64 * rnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -148,25 +186,26 @@ def build_rnn(parameters):
 
 
 def build_unet(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+    filter_base = round(32 * cnn_scaling)
     le = 2
     # inputs
     inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
-    downlist = [la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), activation='relu'))(inputs)]
+    down_list = [la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), activation='relu'))(inputs)]
     for i in range(1, le + 1):
-        downlist.append(
+        down_list.append(
             la.TimeDistributed(la.Conv2D(filter_base * 2 ** (i + 1), kernel_size=(2, 2), activation='relu'))(
-                downlist[i - 1]))
+                down_list[i - 1]))
     bottle = la.TimeDistributed(la.Conv2D(filter_base * 2 ** (le + 2), kernel_size=(2, 2), activation='relu'))(
-        downlist[-1])
+        down_list[-1])
 
     # decoder: expanding path - up sample
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1), kernel_size=(2, 2)))(bottle)
 
-    uplist = [la.concatenate([x, downlist[-1]])]
+    uplist = [la.concatenate([x, down_list[-1]])]
     for i in range(1, le + 1):
         x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1 - i), kernel_size=(2, 2)))(uplist[i - 1])
-        uplist.append(la.concatenate([x, downlist[le - i]]))
+        uplist.append(la.concatenate([x, down_list[le - i]]))
 
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base, kernel_size=(2, 2)))(uplist[- 1])
 
@@ -180,25 +219,26 @@ def build_unet(parameters):
 
 
 def build_unet_rnn(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+    filter_base = round(32 * cnn_scaling)
     le = 1
     # inputs
     inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
-    downlist = [la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), activation='relu'))(inputs)]
+    down_list = [la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), activation='relu'))(inputs)]
     for i in range(1, le + 1):
-        downlist.append(
+        down_list.append(
             la.TimeDistributed(la.Conv2D(filter_base * 2 ** (i + 1), kernel_size=(2, 2), activation='relu'))(
-                downlist[i - 1]))
+                down_list[i - 1]))
     bottle = la.ConvLSTM2D(filter_base * 2 ** (le + 2), kernel_size=(2, 2), activation='relu', return_sequences=True)(
-        downlist[-1])
+        down_list[-1])
 
     # decoder: expanding path - up sample
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1), kernel_size=(2, 2)))(bottle)
 
-    uplist = [la.concatenate([x, downlist[-1]])]
+    uplist = [la.concatenate([x, down_list[-1]])]
     for i in range(1, le + 1):
         x = la.TimeDistributed(la.Conv2DTranspose(filter_base * 2 ** (le + 1 - i), kernel_size=(2, 2)))(uplist[i - 1])
-        uplist.append(la.concatenate([x, downlist[le - i]]))
+        uplist.append(la.concatenate([x, down_list[le - i]]))
 
     x = la.TimeDistributed(la.Conv2DTranspose(filter_base, kernel_size=(2, 2)))(uplist[- 1])
 
@@ -209,35 +249,3 @@ def build_unet_rnn(parameters):
     unet_model = tf.keras.Model(inputs, outputs, name="U-Net")
 
     return unet_model
-
-
-def build_res_dense(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
-    model = m.Sequential()
-
-    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(ReservoirLayer(500))
-    model.add(la.TimeDistributed(la.Dense(500, activation='tanh')))
-    model.add(ReservoirLayer(500))
-    model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
-
-    # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
-    return model
-
-
-def build_deep_res(parameters):
-    mat_size, filter_base, neuron_base, pic_per_mat = parameters
-
-    inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
-    x = [la.Reshape((pic_per_mat, np.prod(mat_size)))(inputs)]
-
-    for _ in range(4):
-        x.append(ReservoirLayer(250)(x[-1]))
-    con = la.concatenate(x[1:])
-    den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
-    output = la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)))(den)
-    model = tf.keras.Model(inputs=inputs, outputs=output)
-
-    return model

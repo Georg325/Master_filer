@@ -25,7 +25,7 @@ model_type = 'res'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
-model, callbacks = data_handler.init_model(32, 64, model_type, iou_s=True, info=True)
+model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 
 data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 

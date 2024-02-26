@@ -2,62 +2,9 @@ import numpy as np
 import tensorflow as tf
 
 
-class ReservoirLayer(tf.keras.layers.Layer):
-    def __init__(self, reservoir_size, gamma=0.95, **kwargs):
-        super(ReservoirLayer, self).__init__(**kwargs)
-        self.reservoir_size = reservoir_size
-        self.gamma = gamma
-
-        self.reservoir_state = None
-
-    def build(self, input_shape):
-        feature_size = input_shape[-1]  # Infer input size dynamically
-
-        self.input_weights = self.add_weight("input_weights",
-                                             shape=(self.reservoir_size, feature_size),
-                                             initializer=tf.keras.initializers.GlorotNormal(),
-                                             trainable=False)
-
-        self.recurrent_weights = self.add_weight("recurrent_weights",
-                                                 shape=(self.reservoir_size, self.reservoir_size),
-                                                 initializer=tf.keras.initializers.Orthogonal(),
-                                                 trainable=False)
-
-        self.bias = self.add_weight("bias",
-                                    shape=(self.reservoir_size, 1),
-                                    initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                    trainable=False)
-
-        self.reservoir_start = self.add_weight("reservoir_state",
-                                               shape=(self.reservoir_size, 1),
-                                               trainable=False,
-                                               initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
-                                               )
-
-        super(ReservoirLayer, self).build(input_shape)
-
-    def call(self, inputs):
-        outputs = []
-        reservoir_cal = self.reservoir_start
-        time_dim = tf.unstack(inputs, axis=1)
-
-        for i in time_dim:  # Iterate over the temporal dimension
-
-            input_var = tf.expand_dims(i, -1)  # Take input at each time step
-
-            # Update reservoir state
-            reservoir_cal = ((1 - self.gamma) * reservoir_cal + self.gamma *
-                             tf.math.tanh(tf.matmul(self.recurrent_weights, reservoir_cal) +
-                                          tf.matmul(self.input_weights, input_var) + self.bias))
-
-            outputs.append(tf.identity(reservoir_cal))  # Append the reservoir state at each time step
-
-        return tf.squeeze(tf.stack(outputs, axis=1), axis=-1)  # Stack the outputs along the temporal dimension
-
-    def compute_output_shape(self, input_shape):
-        return None, input_shape[1], self.reservoir_size
 
 
+'''
 class ComplexReservoirLayer(tf.keras.layers.Layer):
     def __init__(self, reservoir_size, gamma=0.95, **kwargs):
         super(ComplexReservoirLayer, self).__init__(**kwargs)
@@ -120,6 +67,7 @@ class ComplexReservoirLayer(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         return None, input_shape[1], self.reservoir_size
+'''
 
 
 def activation_function(x):
@@ -139,11 +87,11 @@ if '__main__' == __name__:
     input_size = 16
     reservoir_size = 20
     output_size = 7
-    timesteps = 5
+    time_steps = 5
     batch_size = 10
 
-    input_var = np.zeros((batch_size, timesteps + 1, input_size))
-    reservoir_state = np.zeros((batch_size, timesteps + 1, reservoir_size))
+    input_var = np.zeros((batch_size, time_steps + 1, input_size))
+    reservoir_state = np.zeros((batch_size, time_steps + 1, reservoir_size))
 
     gamma = 0.95
 
@@ -154,9 +102,9 @@ if '__main__' == __name__:
     input_weights = np.random.randn(reservoir_size, (input_size * 2) ** 2)
 
     output_weights = np.random.randn(output_size, reservoir_size)
-    output_var = np.zeros((batch_size, timesteps, output_size))
+    output_var = np.zeros((batch_size, time_steps, output_size))
 
-    for i in range(1, timesteps + 1):
+    for i in range(1, time_steps + 1):
         for j in range(input_size):
             input_var[i, j] = i - 1 + (j + 1) / 2
 
@@ -165,7 +113,7 @@ if '__main__' == __name__:
 
     mid_cal = [np.concatenate([input_var[0], input_var[0]])]
 
-    for i in range(1, timesteps + 1):
+    for i in range(1, time_steps + 1):
         mid_cal.append(np.concatenate([input_var[i - 1], input_var[i]]))
     mid_cal = np.array(mid_cal)
 
@@ -174,8 +122,8 @@ if '__main__' == __name__:
 
     fisk = []
 
-    for inpu in mid_cal:
-        double = inpu * inpu[:, None]  # Use broadcasting for element-wise multiplication
+    for inp in mid_cal:
+        double = inp * inp[:, None]  # Use broadcasting for element-wise multiplication
         result = np.concatenate(double)
         fisk.append(result)
 
@@ -183,7 +131,7 @@ if '__main__' == __name__:
     print('o2', com.shape)
     print()
 
-    for i in range(timesteps):
+    for i in range(time_steps):
         reservoir_state[i + 1] = update_reservoir(reservoir_state[i], x_var=com[i])
         output_var[i, :] = output_function(reservoir_state[i + 1])
 

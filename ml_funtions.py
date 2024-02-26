@@ -58,6 +58,67 @@ class IoUMaker(tf.keras.metrics.Metric):
         self.union.assign(0.0)
 
 
+class ReservoirLayer(tf.keras.layers.Layer):
+    def __init__(self, reservoir_size, gamma=0.95, **kwargs):
+        super(ReservoirLayer, self).__init__(**kwargs)
+
+        self.reservoir_size = reservoir_size
+        self.gamma = gamma
+
+        self.reservoir_state = None
+        self.reservoir_start = None
+        self.bias = None
+        self.recurrent_weights = None
+        self.input_weights = None
+
+    def build(self, input_shape):
+        feature_size = input_shape[-1]  # Infer input size dynamically
+
+        self.input_weights = self.add_weight("input_weights",
+                                             shape=(self.reservoir_size, feature_size),
+                                             initializer=tf.keras.initializers.GlorotNormal(),
+                                             trainable=False)
+
+        self.recurrent_weights = self.add_weight("recurrent_weights",
+                                                 shape=(self.reservoir_size, self.reservoir_size),
+                                                 initializer=tf.keras.initializers.Orthogonal(),
+                                                 trainable=False)
+
+        self.bias = self.add_weight("bias",
+                                    shape=(self.reservoir_size, 1),
+                                    initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                    trainable=False)
+
+        self.reservoir_start = self.add_weight("reservoir_state",
+                                               shape=(self.reservoir_size, 1),
+                                               trainable=False,
+                                               initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                               )
+
+        super(ReservoirLayer, self).build(input_shape)
+
+    def call(self, inputs):
+        outputs = []
+        reservoir_cal = self.reservoir_start
+        time_dim = tf.unstack(inputs, axis=1)
+
+        for i in time_dim:  # Iterate over the temporal dimension
+
+            input_var = tf.expand_dims(i, -1)  # Take input at each time step
+
+            # Update reservoir state
+            reservoir_cal = ((1 - self.gamma) * reservoir_cal + self.gamma *
+                             tf.math.tanh(tf.matmul(self.recurrent_weights, reservoir_cal) +
+                                          tf.matmul(self.input_weights, input_var) + self.bias))
+
+            outputs.append(tf.identity(reservoir_cal))  # Append the reservoir state at each time step
+
+        return tf.squeeze(tf.stack(outputs, axis=1), axis=-1)  # Stack the outputs along the temporal dimension
+
+    def compute_output_shape(self, input_shape):
+        return None, input_shape[1], self.reservoir_size
+
+
 def custom_weighted_loss(y_true, y_pred, scaling=1.0):
     """
     Custom loss function with emphasis on errors for values that are 1 in y_true using mean squared error.
@@ -89,59 +150,6 @@ def custom_weighted_loss(y_true, y_pred, scaling=1.0):
     loss = tf.keras.backend.mean(weighted_squared_errors)
 
     return loss
-
-
-def f1_score(y_true, y_pred):
-    """
-    Custom F1 score calculation.
-
-    Parameters:
-    - y_true: True labels
-    - y_pred: Predicted labels
-
-    Returns:
-    - F1 score
-    """
-    true_positives = tf.reduce_sum(tf.cast(y_true * tf.round(y_pred), tf.float32))
-    predicted_positives = tf.reduce_sum(tf.round(y_pred))
-    actual_positives = tf.reduce_sum(y_true)
-
-    precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
-    recall = true_positives / (actual_positives + tf.keras.backend.epsilon())
-
-    f1 = 2 * (precision * recall) / (precision + recall + tf.keras.backend.epsilon())
-
-    return f1
-
-
-def custom_accuracy(y_true, y_pred):
-    """
-    Custom F1 score evaluation function for each timestep.
-
-    Parameters:
-    - y_true: True labels with shape [batch_size, time, row, column]
-    - y_pred: Predicted labels with shape [batch_size, time, row, column]
-
-    Returns:
-    - F1 score for each timestep
-    """
-    f1_per_timestep = []
-
-    # Iterate over timesteps
-    for t in range(10):
-        # Extract labels for the current timestep
-        y_true_timestep = tf.cast(y_true[:, t, :, :], tf.float32)
-
-        # Extract predictions for the current timestep
-        y_pred_timestep = tf.cast(y_pred[:, t, :, :], tf.float32)
-
-        # Calculate F1 score for the current timestep
-        f1_timestep = f1_score(y_true_timestep, y_pred_timestep)
-
-        # Append F1 score for the current timestep to the list
-        f1_per_timestep.append(f1_timestep)
-
-    return np.array(f1_per_timestep)
 
 
 def custom_iou(y_true, y_pred):

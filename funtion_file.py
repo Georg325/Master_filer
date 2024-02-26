@@ -1,5 +1,7 @@
 from os import path
 
+from ml_funtions import *
+
 import numpy as np
 import scipy as sp
 import pandas as pd
@@ -11,7 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from models import build_model
 
-from ks_funtions import *
 import raster_geometry as rg
 
 rng = rd.SystemRandom()
@@ -237,16 +238,18 @@ class MovieDataHandler:
                         unique_lines += possible_row_r * possible_col_r
             print('Possible val lines: ', unique_lines)
 
-    def init_model(self, cnn_size, rnn_size, model_type='cnn_gru', iou_s=True, info=False):
+    def init_model(self, model_type='cnn_rnn', iou_s=True, info=False, early_stopping=False, cnn_rnn_scale=(1, 1)):
         self.model_type = model_type
         checkpoint_filepath = 'standard.weights.h5'
-        model_checkpoint_callback = ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
-                                                                 monitor='loss', mode='min', save_best_only=True)
 
-        model_early_stopp_callback = ks.callbacks.EarlyStopping(monitor='loss', patience=8, min_delta=0.001,
-                                                                restore_best_weights=True, start_from_epoch=20)
+        callbacks = [ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
+                                                  monitor='loss', mode='min', save_best_only=True)]
 
-        parameters = self.mat_size, cnn_size, rnn_size, self.fades_per_mat
+        if early_stopping:
+            callbacks.append(ks.callbacks.EarlyStopping(monitor='loss', patience=8, min_delta=0.0001,
+                                                        restore_best_weights=True, start_from_epoch=20))
+
+        parameters = self.mat_size, cnn_rnn_scale[0], cnn_rnn_scale[1], self.fades_per_mat
 
         model = build_model(model_type, parameters)
         optimizer = ks.optimizers.Adam()
@@ -262,7 +265,7 @@ class MovieDataHandler:
             self.unique_lines()
             model.summary()
 
-        return model, [model_checkpoint_callback, model_early_stopp_callback]
+        return model, callbacks
 
     def init_generator(self, batch_size, num_batch):
         if self.val:
@@ -617,13 +620,13 @@ def train_multiple(matrix_params, model_types, train_param, run=False, name_note
     if run:
         batch_size, batch_num, epochs = train_param
         data_handler = MovieDataHandler(**matrix_params)
-        for model_type in model_types:
-            model, callbacks = data_handler.init_model(32, 64, model_type, iou_s=True, info=False)
+        for k, model_type in enumerate(model_types):
+            model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
             generator, val_gen = data_handler.init_generator(batch_size, batch_num)
             hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
             data_handler.save_model(model, 'auto', epochs)
             data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
-                                                both=True, show=False, name_note=name_note)
+                                                both=True, show=False, name_note=name_note + str(k))
 
 
 if __name__ == '__main__':
@@ -634,13 +637,13 @@ if __name__ == '__main__':
         'strength_kernel': (1, 3),
         'size': [(4, 1), (4, 1)],
         'rotate': True,
-        'new_background': True,
+        'new_background': False,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
         'val': True,
 
         'val_strength_kernel': (1, 3),
-        'val_size': [(3, 3), (3, 3)],
+        'val_size': [(4, 1), (4, 1)],
         'val_rotate': True,
         'val_new_background': True,
         'val_shape': 'line',  # 'line', 'triangle', 'face'
@@ -650,12 +653,12 @@ if __name__ == '__main__':
     # 'res', 'cnn_res', 'res_dense',
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    model_types = ['cnn_rnn', 'res', 'res_dense']
+    model_types = ['cnn_rnn', 'res', 'res_dense', 'res', 'res_dense']
 
     train_param = [
         250,  # batch_size =
         15,  # batch_num =
-        60,  # epochs =
+        50,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, run=True, name_note='val_cube')
+    train_multiple(matrix_params, model_types, train_param, run=True, name_note='val_change_back')
