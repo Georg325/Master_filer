@@ -13,14 +13,12 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from models import build_model
 
-import raster_geometry as rg
-
 rng = rd.SystemRandom()
 
 
 class MovieDataHandler:
-    def __init__(self, mat_size, fades_per_mat, strength_kernel, size, rotate, new_background, shape,
-                 val, val_strength_kernel=None, val_size=None, val_rotate=0, val_new_background=0, val_shape=0):
+    def __init__(self, mat_size, fades_per_mat, strength_kernel, size, rotate, new_background,
+                 val, val_strength_kernel=None, val_size=None, val_rotate=0, val_new_background=0):
 
         self.mat_size = mat_size
         self.fades_per_mat = fades_per_mat
@@ -28,7 +26,6 @@ class MovieDataHandler:
         self.size = size
         self.rotate = rotate
         self.new_background = new_background
-        self.shape = shape
 
         self.kernel = set_kernel(strength_kernel)
 
@@ -36,7 +33,6 @@ class MovieDataHandler:
         self.val_size = val_size
         self.val_rotate = val_rotate
         self.val_new_background = val_new_background
-        self.val_shape = val_shape
 
         self.val_kernel = set_kernel(val_strength_kernel)
 
@@ -76,42 +72,25 @@ class MovieDataHandler:
         list_alfa = []
 
         if val:
-            size, rotate, new_background, shape, kernel = (self.val_size, self.val_rotate, self.val_new_background,
-                                                           self.val_shape, self.val_kernel)
+            size, rotate, new_background, kernel = (
+            self.val_size, self.val_rotate, self.val_new_background, self.val_kernel)
         else:
-            size, rotate, new_background, shape, kernel = (self.size, self.rotate, self.new_background,
-                                                           self.shape, self.kernel)
+            size, rotate, new_background, kernel = (self.size, self.rotate, self.new_background, self.kernel)
 
         for k in range(0, numb_of_time_series):
-            if shape == 'triangle':
-                sfb = matrix_triangle_maker(self.mat_size, kernel,
-                                            self.fades_per_mat,
-                                            new_background=new_background)
+            if rotate:  # makes the line
+                line_size = rotater((
+                    rng.randint(size[0][0], size[1][0]),
+                    rng.randint(size[0][1], size[1][1])))
 
-            elif shape == 'face':
-                sfb = matrix_triangle_maker(self.mat_size, kernel,
-                                            self.fades_per_mat,
-                                            new_background=new_background, alternative=True)
+            else:  # does not rotate the line
+                line_size = (
+                    rng.randint(size[0][0], size[1][0]),
+                    rng.randint(size[0][1], size[1][1]))
 
-            elif shape == 'line':
-                if rotate:  # makes the line
-                    line_size = rotater((
-                        rng.randint(size[0][0], size[1][0]),
-                        rng.randint(size[0][1], size[1][1])))
-
-                else:  # does not rotate the line
-                    line_size = (
-                        rng.randint(size[0][0], size[1][0]),
-                        rng.randint(size[0][1], size[1][1]))
-
-                sfb = matrix_maker(self.mat_size, kernel, line_size,
-                                   self.fades_per_mat,
-                                   new_background=new_background)
-
-            else:
-                print(f'{self.shape} is invalid')
-                print('Try triangle, face or line')
-                return
+            sfb = matrix_maker(self.mat_size, kernel, line_size,
+                               self.fades_per_mat,
+                               new_background=new_background)
 
             mat, pos, alf = sfb
             list_matrix.append(mat)
@@ -277,16 +256,9 @@ class MovieDataHandler:
         if weights_shape == 'none':
             return
         elif weights_shape == 'auto':
-            if path.exists(f'{self.mat_size}{self.model_type}triangle.weights.h5') and self.shape == 'triangle':
+            if path.exists(f'{self.mat_size}{self.model_type}.weights.h5'):
                 try:
-                    model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
-                    print('Loaded triangle weights')
-                except ValueError:
-                    print('Could not load triangle weights')
-
-            elif path.exists(f'{self.mat_size}{self.model_type}line.weights.h5') and self.shape == 'line':
-                try:
-                    model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+                    model.load_weights(f'{self.mat_size}{self.model_type}.weights.h5')
                     print('Loaded line weights')
                 except ValueError:
                     print('Could not load line weights')
@@ -298,11 +270,8 @@ class MovieDataHandler:
                     print('Could not load callback weights')
             else:
                 print('Did not find any weights')
-        elif weights_shape == 'triangle':
-            model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
-            print('Loaded triangle weights')
         elif weights_shape == 'line':
-            model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+            model.load_weights(f'{self.mat_size}{self.model_type}.weights.h5')
             print('Loaded line weights')
         else:
             if path.exists(f'{weights_shape}.weights.h5'):
@@ -319,19 +288,8 @@ class MovieDataHandler:
             return
         elif weights_shape == 'auto':
 
-            if self.shape == 'triangle':
-                model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
-                print('Saved triangle weights')
-
-            elif self.shape == 'line':
-                model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
-                print('Saved line weights')
-            else:
-                print(f'error {self.shape} not recognized')
-
-        elif weights_shape == 'triangle':
-            model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
-            print('Saved triangle weights')
+            model.save_weights(f'{self.mat_size}{self.model_type}.weights.h5')
+            print('Saved line weights')
 
         elif weights_shape == 'line':
             model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
@@ -447,7 +405,7 @@ class MovieDataHandler:
             title += 'static background, '
             filename += 'static background, '
 
-        title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
+        title += f'{self.model_type} model on {self.mat_size} matrix'
         filename += f' {self.model_type} on {self.mat_size} with {name_note}'
 
         fig.suptitle(title)
@@ -523,61 +481,6 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False, alternative=False):
-    rows, cols = mat_size
-
-    # smooth
-    smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
-
-    # line_start
-
-    a, b, c = ((rng.randint(0, rows - 1), rng.randint(0, cols - 1)),
-               (rng.randint(0, rows - 1), rng.randint(0, cols - 1)),
-               (rng.randint(0, rows - 1), rng.randint(0, cols - 1)))
-    coords = set(full_triangle(a, b, c))
-    arr = np.array(rg.render_at((rows, cols), coords).astype(int))
-    if alternative:
-        arr = np.array([[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                        [0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0],
-                        [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0],
-                        [0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0],
-                        # [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0],
-                        [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0],
-                        [0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0],
-                        [0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0],
-                        [0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],
-                        [0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0],
-                        [0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0],
-                        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]])
-    # alfa
-    alfa = np.linspace(1, 0, num=num_per_mat)
-
-    # matrix_fade
-    matrix_line_fade = []
-    line_pos_mat = []
-
-    for i in range(num_per_mat):
-        if new_background:
-            smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
-
-        matrix_with_line = np.ones((rows, cols))
-        fish = arr * (1 - alfa[i])
-
-        matrix_line_fade.append(smooth_matrix * (matrix_with_line - fish))
-
-        if alfa[i] == 1:
-            line_pos_mat.append(np.zeros((rows, cols)))
-
-        else:
-            line_pos_mat.append(arr)
-
-    return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
-
-
 def rotater(line):
     if rng.randint(0, 1):
         return line[::-1]
@@ -610,12 +513,6 @@ def plots(matrix, interval=200):
     return animation
 
 
-def full_triangle(a, b, c):
-    ab = rg.bresenham_line(a, b, endpoint=True)
-    for x in set(ab):
-        yield from rg.bresenham_line(c, x, endpoint=True)
-
-
 def train_multiple(matrix_params, model_types, train_param, run=False, name_note=''):
     if run:
         batch_size, batch_num, epochs = train_param
@@ -638,7 +535,6 @@ if __name__ == '__main__':
         'size': [(4, 1), (4, 1)],
         'rotate': True,
         'new_background': False,
-        'shape': 'line',  # 'line', 'triangle', 'face'
 
         'val': True,
 
@@ -646,7 +542,6 @@ if __name__ == '__main__':
         'val_size': [(4, 1), (4, 1)],
         'val_rotate': True,
         'val_new_background': True,
-        'val_shape': 'line',  # 'line', 'triangle', 'face'
     }
 
     # 'dense', 'cnn', 'cnn_lstm',

@@ -25,9 +25,9 @@ model_type = 'res'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
-model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
+model, callbacks = data_handler.init_model(model_type=model_type, iou_s=True, info=True)
 
-data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
+data_handler.load_model(model=model, weights_shape='none')  # auto, line, triangle, none, custom
 
 #%%
 batch_size = 250
@@ -41,7 +41,7 @@ hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=ca
 print(f'Training tok {time.time() - start:.2f} s')
 
 #%%
-data_handler.save_model(model, 'none', epochs)  # auto, line, triangle, none, custom
+data_handler.save_model(model=model, weights_shape='none', epochs=epochs)  # auto, line, triangle, none, custom
 
 #%%
 data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
