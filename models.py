@@ -30,6 +30,8 @@ def build_model(model_type, parameters):
         return build_res_dense(parameters)
     elif model_type == 'deep_res':
         return build_deep_res(parameters)
+    elif model_type == 'brain':
+        return build_brain(parameters)
     breakpoint('error')
 
 
@@ -50,8 +52,9 @@ def build_cnn(parameters):
 
 
 def build_cnn_rnn(parameters):
-    mat_size, cnn_scaling, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
     filter_base = round(32 * cnn_scaling)
+    neuron_base = round(64 * rnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -101,7 +104,7 @@ def build_res_dense(parameters):
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
 
@@ -147,7 +150,7 @@ def build_res(parameters):
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
 
@@ -249,3 +252,17 @@ def build_unet_rnn(parameters):
     unet_model = tf.keras.Model(inputs, outputs, name="U-Net")
 
     return unet_model
+
+
+def build_brain(parameters):
+    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    model = m.Sequential()
+
+    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
+    model.add(ReservoirLayer(750, make_weights=True))
+    model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
+
+    # Reshape to the desired output shape
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
+    return model

@@ -1,4 +1,4 @@
-from os import path
+import os
 
 from ml_funtions import *
 
@@ -277,20 +277,20 @@ class MovieDataHandler:
         if weights_shape == 'none':
             return
         elif weights_shape == 'auto':
-            if path.exists(f'{self.mat_size}{self.model_type}triangle.weights.h5') and self.shape == 'triangle':
+            if os.path.exists(f'{self.mat_size}{self.model_type}triangle.weights.h5') and self.shape == 'triangle':
                 try:
                     model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
                     print('Loaded triangle weights')
                 except ValueError:
                     print('Could not load triangle weights')
 
-            elif path.exists(f'{self.mat_size}{self.model_type}line.weights.h5') and self.shape == 'line':
+            elif os.path.exists(f'{self.mat_size}{self.model_type}line.weights.h5') and self.shape == 'line':
                 try:
                     model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
                     print('Loaded line weights')
                 except ValueError:
                     print('Could not load line weights')
-            elif path.exists('standard.weights.h5'):
+            elif os.path.exists('standard.weights.h5'):
                 try:
                     model.load_weights(f'standard.weights.h5')
                     print('Loaded callback weights')
@@ -305,7 +305,7 @@ class MovieDataHandler:
             model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
             print('Loaded line weights')
         else:
-            if path.exists(f'{weights_shape}.weights.h5'):
+            if os.path.exists(f'{weights_shape}.weights.h5'):
                 try:
                     model.load_weights(f'{weights_shape}.weights.h5')
                     print(f'Loaded {weights_shape}.weights.h5')
@@ -341,7 +341,7 @@ class MovieDataHandler:
             model.save_weights(f'{weights_shape}.weights.h5')
             print(f'Saved custom weights with name {weights_shape}.weights.h5')
 
-    def plot_training_history(self, training_history_object, show, name_note):
+    def plot_training_history(self, training_history_object, show, name_note, nr):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -439,26 +439,30 @@ class MovieDataHandler:
             if done:
                 plt_nr += 1
         title = f'Metrics from the '
-        filename = ''
         if not self.rotate:
             title += 'non rotated, '
-            filename += 'non rotated, '
         if not self.new_background:
             title += 'static background, '
-            filename += 'static background, '
 
         title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
-        filename += f' {self.model_type} on {self.mat_size} with {name_note}'
+        filename = f' {self.model_type} on {self.mat_size} with {name_note}'
 
         fig.suptitle(title)
         fig.tight_layout()
         if show:
-            plt.show(title)
+            plt.show()
         else:
-            plt.savefig(filename)
+            if not os.path.exists(name_note):
+                os.makedirs(name_note)
+
+            # Save the plot inside the folder
+            file_path = os.path.join(name_note, filename + str(nr))
+            plt.savefig(file_path)
+
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
-                               movies_to_show=0, with_val=False, both=False, interval=500, show=True, name_note=''):
+                               movies_to_show=0, with_val=False, both=False, interval=500, show=True,
+                               name_note='test', nr=0):
         if movies_to_plot > 0:
             if both:
                 self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=True)
@@ -475,7 +479,7 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist, show, name_note)
+            self.plot_training_history(hist, show, name_note, nr=nr)
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -623,10 +627,9 @@ def train_multiple(matrix_params, model_types, train_param, run=False, name_note
         for k, model_type in enumerate(model_types):
             model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
             generator, val_gen = data_handler.init_generator(batch_size, batch_num)
-            hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
-            data_handler.save_model(model, 'auto', epochs)
+            hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
             data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
-                                                both=True, show=False, name_note=name_note + str(k))
+                                                both=True, show=False, name_note=name_note, nr=k)
 
 
 if __name__ == '__main__':
@@ -637,28 +640,28 @@ if __name__ == '__main__':
         'strength_kernel': (1, 3),
         'size': [(4, 1), (4, 1)],
         'rotate': True,
-        'new_background': False,
+        'new_background': True,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
         'val': True,
 
         'val_strength_kernel': (1, 3),
-        'val_size': [(4, 1), (4, 1)],
-        'val_rotate': True,
+        'val_size': [(2, 2), (2, 2)],
+        'val_rotate': False,
         'val_new_background': True,
         'val_shape': 'line',  # 'line', 'triangle', 'face'
     }
 
     # 'dense', 'cnn', 'cnn_lstm',
-    # 'res', 'cnn_res', 'res_dense',
+    # 'res', 'cnn_res', 'deep_res', 'res_dense',
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    model_types = ['cnn_rnn', 'res', 'res_dense', 'res', 'res_dense']
+    model_types = ['cnn_rnn', 'res']
 
     train_param = [
         250,  # batch_size =
         15,  # batch_num =
-        50,  # epochs =
+        30,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, run=True, name_note='val_change_back')
+    train_multiple(matrix_params, model_types, train_param, run=True, name_note='same_size_cube')
