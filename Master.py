@@ -15,13 +15,13 @@ matrix_params = {
     'val': True,
 
     'val_strength_kernel': (1, 3),
-    'val_size': [(3, 3), (3, 3)],
+    'val_size': [(2, 2), (2, 2)],
     'val_rotate': True,
     'val_new_background': False,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
 }
 # dense, cnn, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain
-model_type = 'res'
+model_type = 'brain'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
@@ -31,8 +31,8 @@ data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 
 #%%
 batch_size = 250
-batch_num = 15
-epochs = 20
+batch_num = 1
+epochs = 5
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 

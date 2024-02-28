@@ -82,9 +82,10 @@ class BrainLayer(tf.keras.layers.Layer):
         self.bias = None
         self.recurrent_weights = None
         self.input_weights = None
+        self.made_weights = None
 
         if make_weights:
-            self.made_weights = make_weights()
+            self.made_weights = make_rec_weights(reservoir_size)
 
     def build(self, input_shape):
         feature_size = input_shape[-1]  # Infer input size dynamically
@@ -94,7 +95,7 @@ class BrainLayer(tf.keras.layers.Layer):
                                              initializer=tf.keras.initializers.GlorotNormal(),
                                              trainable=False)
 
-        if self.recurrent_weights is None:
+        if self.made_weights is None:
             self.recurrent_weights = self.add_weight("recurrent_weights",
                                                      shape=(self.reservoir_size, self.reservoir_size),
                                                      initializer=tf.keras.initializers.Orthogonal(),
@@ -102,7 +103,7 @@ class BrainLayer(tf.keras.layers.Layer):
         else:
             self.recurrent_weights = self.add_weight("recurrent_weights",
                                                      shape=(self.reservoir_size, self.reservoir_size),
-                                                     initializer=tf.constant_initializer(value=self.recurrent_weights),
+                                                     initializer=tf.constant_initializer(value=self.made_weights),
                                                      trainable=False)
 
         self.bias = self.add_weight("bias",
@@ -153,21 +154,44 @@ def output_function(reservoir):
     return np.matmul(output_weights, reservoir)
 
 
-def make_weights(size, info=False, show=False):
+def make_rec_weights(size, info=False, show=False, num=None):
     rt = sp.stats.ortho_group.rvs(dim=size // 2)
     lb = sp.stats.ortho_group.rvs(dim=size // 2)
     zer = np.zeros((size // 2, size // 2))
 
     a = np.concatenate((np.concatenate((rt, zer), axis=1), np.concatenate((zer, lb), axis=1)), axis=0)
-    tell = 0.4
+    if num is None:
+        num = min(a.max()*0.3, 0.4)
 
     for i in range(size):
-        a[size - i - 1, i] = tell
+        if i % 2 == 0:
+            a[size - i - 1, i] = num
+        else:
+            a[size - i - 1, i] = -num
+
+    stability = np.absolute(sp.linalg.eigvals(a)).round(3)
+
+    if stability.max() > 1.04 or stability.min() < 0.94:
+        print('not stable')
+        # a = make_weights(size, num=num-0.1)
+
+    if info:
+        print(num)
+        print(stability.max(), stability.min())
+        print(sum(stability)-size)
+        print(stability)
+
+    plt.imshow(a)
+    plt.colorbar()
+    if show:
+        plt.show()
+    else:
+        plt.savefig('last_weights.png')
 
     return a
 
 
-print(make_weights(4))
+# make_rec_weights(140).round(3)
 
 if '__ma in__' == __name__:
     input_size = 16
