@@ -261,7 +261,7 @@ def build_brain(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(BrainLayer(750, make_weights=True))
+    model.add(BrainLayer(750*4, make_weights=True))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape

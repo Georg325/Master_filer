@@ -71,7 +71,7 @@ class ComplexReservoirLayer(tf.keras.layers.Layer):
 
 
 class BrainLayer(tf.keras.layers.Layer):
-    def __init__(self, reservoir_size, gamma=0.95, make_weights=False, **kwargs):
+    def __init__(self, reservoir_size, gamma=0.95, make_weights=False, half_output=False, half_input=False, **kwargs):
         super(BrainLayer, self).__init__(**kwargs)
 
         self.reservoir_size = reservoir_size
@@ -83,6 +83,9 @@ class BrainLayer(tf.keras.layers.Layer):
         self.recurrent_weights = None
         self.input_weights = None
         self.made_weights = None
+
+        self.in_cor = None
+        self.out_cor = None
 
         if make_weights:
             self.made_weights = make_rec_weights(reservoir_size)
@@ -117,6 +120,14 @@ class BrainLayer(tf.keras.layers.Layer):
                                                initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
                                                )
 
+        out_cor = np.zeros((self.reservoir_size // 2, self.reservoir_size//2), dtype=np.float32)
+        dig = np.diag(np.ones((self.reservoir_size // 2)))
+        out_cor = np.concatenate((out_cor, dig), axis=1, dtype=np.float32)
+
+        self.in_cor = np.diag(np.concatenate(
+            (np.ones(self.reservoir_size//2), np.zeros(self.reservoir_size//2)), axis=0, dtype=np.float32))
+        self.out_cor = out_cor
+
         super(BrainLayer, self).build(input_shape)
 
     def call(self, inputs):
@@ -128,12 +139,16 @@ class BrainLayer(tf.keras.layers.Layer):
 
             input_var = tf.expand_dims(i, -1)  # Take input at each time step
 
+            start_step = tf.matmul(self.input_weights, input_var)
+
             # Update reservoir state
             reservoir_cal = ((1 - self.gamma) * reservoir_cal + self.gamma *
                              tf.math.tanh(tf.matmul(self.recurrent_weights, reservoir_cal) +
-                                          tf.matmul(self.input_weights, input_var) + self.bias))
+                                          tf.matmul(self.in_cor, start_step) + self.bias))
 
-            outputs.append(tf.identity(reservoir_cal))  # Append the reservoir state at each time step
+            mid_step = tf.matmul(self.out_cor, reservoir_cal)
+
+            outputs.append(tf.identity(mid_step))  # Append the reservoir state at each time step
 
         return tf.squeeze(tf.stack(outputs, axis=1), axis=-1)  # Stack the outputs along the temporal dimension
 
@@ -180,14 +195,16 @@ def make_rec_weights(size, info=False, show=False, num=None):
         print(stability.max(), stability.min())
         print(sum(stability)-size)
         print(stability)
-
-    plt.imshow(a)
-    plt.colorbar()
+    '''
     if show:
+        plt.imshow(a)
+        plt.colorbar()
         plt.show()
     else:
+        plt.imshow(a)
+        plt.colorbar()
         plt.savefig('last_weights.png')
-
+    '''
     return a
 
 
