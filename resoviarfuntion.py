@@ -88,7 +88,7 @@ class BrainLayer(tf.keras.layers.Layer):
         self.out_cor = None
 
         if make_weights:
-            self.made_weights = make_rec_weights(reservoir_size)
+            self.made_weights = make_rec_weights(reservoir_size, thickness=10)
 
     def build(self, input_shape):
         feature_size = input_shape[-1]  # Infer input size dynamically
@@ -169,33 +169,38 @@ def output_function(reservoir):
     return np.matmul(output_weights, reservoir)
 
 
-def make_rec_weights(size, info=False, show=False, num=None):
+def make_rec_weights(size, thickness=1, info=False, show=False, num=None):
+    if size % 2 == 1:
+        raise ValueError('Size must be an even number')
+
     rt = sp.stats.ortho_group.rvs(dim=size // 2)
     lb = sp.stats.ortho_group.rvs(dim=size // 2)
     zer = np.zeros((size // 2, size // 2))
 
     a = np.concatenate((np.concatenate((rt, zer), axis=1), np.concatenate((zer, lb), axis=1)), axis=0)
+
     if num is None:
         num = min(a.max()*0.3, 0.4)
 
-    for i in range(size):
-        if i % 2 == 0:
-            a[size - i - 1, i] = num
+    for i in range(thickness):
+        dig = np.random.choice((num, -num), size=size-i)
+        if i == 0:
+            a += np.rot90(np.diag(dig))
         else:
-            a[size - i - 1, i] = -num
+            a += np.rot90(np.diag(dig, k=i))
+            a -= np.rot90(np.diag(dig, k=-i))
 
     stability = np.absolute(sp.linalg.eigvals(a)).round(3)
 
     if stability.max() > 1.04 or stability.min() < 0.94:
-        print('not stable')
+        print(f'not stable: max={stability.max()}, min={stability.min()}')
         # a = make_weights(size, num=num-0.1)
 
     if info:
-        print(num)
+        print('num:', num)
         print(stability.max(), stability.min())
         print(sum(stability)-size)
-        print(stability)
-    '''
+
     if show:
         plt.imshow(a)
         plt.colorbar()
@@ -204,7 +209,7 @@ def make_rec_weights(size, info=False, show=False, num=None):
         plt.imshow(a)
         plt.colorbar()
         plt.savefig('last_weights.png')
-    '''
+
     return a
 
 
