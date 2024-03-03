@@ -162,7 +162,8 @@ def build_cnn_res(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter)))
+    model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//4)))
     model.add(ReservoirLayer(750))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 

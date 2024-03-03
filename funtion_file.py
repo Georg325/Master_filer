@@ -256,7 +256,7 @@ class MovieDataHandler:
         if iou_s:
             metrics = [IoUMaker(n) for n in range(1, 10)]
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
-                          metrics=[metrics, Precision(name='precision'), Recall(name='recall')])
+                          metrics=[metrics, Precision(name='precision'), Recall(name='recall'), 'accuracy'])
         else:
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
@@ -456,9 +456,8 @@ class MovieDataHandler:
                 os.makedirs(name_note)
 
             # Save the plot inside the folder
-            file_path = os.path.join(name_note, filename + str(nr))
+            file_path = os.path.join(name_note, filename + ' ' + str(nr))
             plt.savefig(file_path)
-
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
                                movies_to_show=0, with_val=False, both=False, interval=500, show=True,
@@ -620,48 +619,54 @@ def full_triangle(a, b, c):
         yield from rg.bresenham_line(c, x, endpoint=True)
 
 
-def train_multiple(matrix_params, model_types, train_param, run=False, name_note=''):
+def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note=''):
     if run:
         batch_size, batch_num, epochs = train_param
-        data_handler = MovieDataHandler(**matrix_params)
-        for k, model_type in enumerate(model_types):
-            model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
-            generator, val_gen = data_handler.init_generator(batch_size, batch_num)
-            hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
-            data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
-                                                both=True, show=False, name_note=name_note, nr=k)
+        for f, val_param in enumerate(val_params):
+            new_dict = {**matrix_params, **val_param}
+            data_handler = MovieDataHandler(**new_dict)
+            for k, model_type in enumerate(model_types):
+                model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
+
+                generator, val_gen = data_handler.init_generator(batch_size, batch_num)
+
+                hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
+
+                data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
+                                                    both=True, show=False, name_note=name_note, nr=k+f)
 
 
 if __name__ == '__main__':
     matrix_params = {
-        'mat_size': (6, 6),
+        'mat_size': (10, 10),
         'fades_per_mat': 10,
 
         'strength_kernel': (1, 3),
-        'size': [(4, 1), (4, 1)],
+        'size': [(9, 1), (9, 1)],
         'rotate': True,
-        'new_background': True,
+        'new_background': False,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
         'val': True,
 
         'val_strength_kernel': (1, 3),
-        'val_size': [(2, 2), (2, 2)],
-        'val_rotate': False,
-        'val_new_background': True,
+        'val_size': [(9, 1), (9, 1)],
+        'val_rotate': True,
+        'val_new_background': False,
         'val_shape': 'line',  # 'line', 'triangle', 'face'
     }
 
     # 'dense', 'cnn', 'cnn_lstm',
-    # 'res', 'cnn_res', 'deep_res', 'res_dense',
+    # 'res', 'cnn_res', 'deep_res', 'res_dense', 'brain'
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    model_types = ['cnn_rnn', 'res']
+    val_param = [{'val_size': [(3, 3), (3, 3)]}, {'val_strength_kernel': (0.5, 3)}, {'val_new_background': False}]
+    model_types = ['cnn_rnn', 'res', 'brain']
 
     train_param = [
         250,  # batch_size =
         15,  # batch_num =
-        30,  # epochs =
+        60,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, run=True, name_note='same_size_cube')
+    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='big_eq_cube')

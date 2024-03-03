@@ -4,6 +4,8 @@ import scipy as sp
 
 import matplotlib.pyplot as plt
 
+rng = np.random.default_rng()
+
 '''
 class ComplexReservoirLayer(tf.keras.layers.Layer):
     def __init__(self, reservoir_size, gamma=0.95, **kwargs):
@@ -88,7 +90,7 @@ class BrainLayer(tf.keras.layers.Layer):
         self.out_cor = None
 
         if make_weights:
-            self.made_weights = make_rec_weights(reservoir_size, thickness=10)
+            self.made_weights = make_rec_weights(reservoir_size, thickness=20)
 
     def build(self, input_shape):
         feature_size = input_shape[-1]  # Infer input size dynamically
@@ -120,12 +122,12 @@ class BrainLayer(tf.keras.layers.Layer):
                                                initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
                                                )
 
-        out_cor = np.zeros((self.reservoir_size // 2, self.reservoir_size//2), dtype=np.float32)
+        out_cor = np.zeros((self.reservoir_size // 2, self.reservoir_size // 2), dtype=np.float32)
         dig = np.diag(np.ones((self.reservoir_size // 2)))
         out_cor = np.concatenate((out_cor, dig), axis=1, dtype=np.float32)
 
         self.in_cor = np.diag(np.concatenate(
-            (np.ones(self.reservoir_size//2), np.zeros(self.reservoir_size//2)), axis=0, dtype=np.float32))
+            (np.ones(self.reservoir_size // 2), np.zeros(self.reservoir_size // 2)), axis=0, dtype=np.float32))
         self.out_cor = out_cor
 
         super(BrainLayer, self).build(input_shape)
@@ -169,7 +171,7 @@ def output_function(reservoir):
     return np.matmul(output_weights, reservoir)
 
 
-def make_rec_weights(size, thickness=1, info=False, show=False, num=None):
+def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffle=True):
     if size % 2 == 1:
         raise ValueError('Size must be an even number')
 
@@ -180,15 +182,27 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None):
     a = np.concatenate((np.concatenate((rt, zer), axis=1), np.concatenate((zer, lb), axis=1)), axis=0)
 
     if num is None:
-        num = min(a.max()*0.3, 0.4)
+        num = min(a.max()*0.2, 0.4)
 
     for i in range(thickness):
-        dig = np.random.choice((num, -num), size=size-i)
+        dig = np.random.choice((num, -num), size=size//2 - i)
         if i == 0:
-            a += np.rot90(np.diag(dig))
+            a[size // 2:, :size // 2] += np.rot90(np.diag(dig))
+
+            a[:size // 2, size // 2:] += np.rot90(np.diag(dig))
         else:
-            a += np.rot90(np.diag(dig, k=i))
-            a -= np.rot90(np.diag(dig, k=-i))
+            a[size // 2:, :size // 2] += np.rot90(np.diag(dig, k=i))
+            a[size // 2:, :size // 2] -= np.rot90(np.diag(dig, k=-i))
+
+            a[:size // 2, size // 2:] += np.rot90(np.diag(dig, k=i))
+            a[:size // 2, size // 2:] -= np.rot90(np.diag(dig, k=-i))
+
+    if shuffle:
+        rng.shuffle(a[size // 2:, :size // 2], axis=0)
+        rng.shuffle(a[size // 2:, :size // 2], axis=1)
+
+        rng.shuffle(a[:size // 2, size // 2:], axis=1)
+        rng.shuffle(a[:size // 2, size // 2:], axis=0)
 
     stability = np.absolute(sp.linalg.eigvals(a)).round(3)
 
@@ -199,11 +213,12 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None):
     if info:
         print('num:', num)
         print(stability.max(), stability.min())
-        print(sum(stability)-size)
+        print(sum(stability) - size)
 
     if show:
-        plt.imshow(a)
+        plt.imshow(a, cmap='gray')
         plt.colorbar()
+        plt.title('Example weights:')
         plt.show()
     else:
         plt.imshow(a)
@@ -213,7 +228,7 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None):
     return a
 
 
-# make_rec_weights(140).round(3)
+# make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
 
 if '__ma in__' == __name__:
     input_size = 16

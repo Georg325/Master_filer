@@ -3,11 +3,11 @@ import time
 from funtion_file import *
 #%%
 matrix_params = {
-    'mat_size': (6, 6),
+    'mat_size': (12, 12),
     'fades_per_mat': 10,
 
     'strength_kernel': (1, 3),
-    'size': [(4, 1), (4, 1)],
+    'size': [(9, 1), (9, 1)],
     'rotate': True,
     'new_background': False,
     'shape': 'line',  # 'line', 'triangle', 'face'
@@ -15,7 +15,7 @@ matrix_params = {
     'val': True,
 
     'val_strength_kernel': (1, 3),
-    'val_size': [(2, 2), (2, 2)],
+    'val_size': [(3, 3), (3, 3)],
     'val_rotate': True,
     'val_new_background': False,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
@@ -32,7 +32,7 @@ data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 #%%
 batch_size = 250
 batch_num = 15
-epochs = 60
+epochs = 10
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
