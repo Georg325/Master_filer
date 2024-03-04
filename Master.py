@@ -3,11 +3,11 @@ import time
 from funtion_file import *
 #%%
 matrix_params = {
-    'mat_size': (12, 12),
+    'mat_size': (10, 10),
     'fades_per_mat': 10,
 
     'strength_kernel': (1, 3),
-    'size': [(9, 1), (9, 1)],
+    'size': [(6, 1), (6, 1)],
     'rotate': True,
     'new_background': False,
     'shape': 'line',  # 'line', 'triangle', 'face'
@@ -30,9 +30,9 @@ model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 
 #%%
-batch_size = 250
+batch_size = 200
 batch_num = 15
-epochs = 10
+epochs = 40
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -44,6 +44,5 @@ print(f'Training tok {time.time() - start:.2f} s')
 data_handler.save_model(model, 'none', epochs)  # auto, line, triangle, none, custom
 
 #%%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
-                                    movies_to_plot=0, movies_to_show=0,
-                                    both=True, show=True)
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=True,
+                                    plot=True)

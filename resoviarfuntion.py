@@ -90,7 +90,7 @@ class BrainLayer(tf.keras.layers.Layer):
         self.out_cor = None
 
         if make_weights:
-            self.made_weights = make_rec_weights(reservoir_size, thickness=20)
+            self.made_weights = make_rec_weights(reservoir_size, thickness=33)
 
     def build(self, input_shape):
         feature_size = input_shape[-1]  # Infer input size dynamically
@@ -182,7 +182,7 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     a = np.concatenate((np.concatenate((rt, zer), axis=1), np.concatenate((zer, lb), axis=1)), axis=0)
 
     if num is None:
-        num = min(a.max()*0.2, 0.4)
+        num = min(a.max()*0.25, 0.4)
 
     for i in range(thickness):
         dig = np.random.choice((num, -num), size=size//2 - i)

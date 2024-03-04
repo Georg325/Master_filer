@@ -254,9 +254,9 @@ class MovieDataHandler:
         model = build_model(model_type, parameters)
         optimizer = ks.optimizers.Adam()
         if iou_s:
-            metrics = [IoUMaker(n) for n in range(1, 10)]
+            metrics = [IoUMaker(n) for n in range(1, self.fades_per_mat)]
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
-                          metrics=[metrics, Precision(name='precision'), Recall(name='recall'), 'accuracy'])
+                          metrics=[metrics, Precision(name='precision'), Recall(name='recall')])
         else:
             model.compile(optimizer=optimizer, loss=custom_weighted_loss,
                           metrics=[BinaryIoU(name='IoU'), Precision(name='precision'), Recall(name='recall')])
@@ -460,7 +460,7 @@ class MovieDataHandler:
             plt.savefig(file_path)
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
-                               movies_to_show=0, with_val=False, both=False, interval=500, show=True,
+                               movies_to_show=0, with_val=False, both=False, interval=500, plot=True,
                                name_note='test', nr=0):
         if movies_to_plot > 0:
             if both:
@@ -478,7 +478,7 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist, show, name_note, nr=nr)
+            self.plot_training_history(hist, plot, name_note, nr=nr)
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -633,7 +633,7 @@ def train_multiple(matrix_params, model_types, train_param, val_params, run=Fals
                 hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
 
                 data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
-                                                    both=True, show=False, name_note=name_note, nr=k+f)
+                                                    both=True, plot=False, name_note=name_note, nr=k)
 
 
 if __name__ == '__main__':
@@ -642,15 +642,15 @@ if __name__ == '__main__':
         'fades_per_mat': 10,
 
         'strength_kernel': (1, 3),
-        'size': [(9, 1), (9, 1)],
+        'size': [(6, 1), (6, 1)],
         'rotate': True,
         'new_background': False,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
-        'val': True,
+        'val': False,
 
         'val_strength_kernel': (1, 3),
-        'val_size': [(9, 1), (9, 1)],
+        'val_size': [(6, 1), (6, 1)],
         'val_rotate': True,
         'val_new_background': False,
         'val_shape': 'line',  # 'line', 'triangle', 'face'
@@ -660,8 +660,8 @@ if __name__ == '__main__':
     # 'res', 'cnn_res', 'deep_res', 'res_dense', 'brain'
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    val_param = [{'val_size': [(3, 3), (3, 3)]}, {'val_strength_kernel': (0.5, 3)}, {'val_new_background': False}]
-    model_types = ['cnn_rnn', 'res', 'brain']
+    val_param = [{'val_size': [(3, 2), (3, 2)]}]
+    model_types = ['cnn', 'rnn']
 
     train_param = [
         250,  # batch_size =
@@ -669,4 +669,4 @@ if __name__ == '__main__':
         60,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='big_eq_cube')
+    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='non_val_6')
