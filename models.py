@@ -4,6 +4,7 @@ from keras import layers as la
 import tensorflow as tf
 
 from ml_funtions import ReservoirLayer
+from resoviarfuntion import BrainLayer
 
 
 def build_model(model_type, parameters):
@@ -30,6 +31,8 @@ def build_model(model_type, parameters):
         return build_res_dense(parameters)
     elif model_type == 'deep_res':
         return build_deep_res(parameters)
+    elif model_type == 'brain':
+        return build_brain(parameters)
     breakpoint('error')
 
 
@@ -50,8 +53,9 @@ def build_cnn(parameters):
 
 
 def build_cnn_rnn(parameters):
-    mat_size, cnn_scaling, neuron_base, pic_per_mat = parameters
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
     filter_base = round(32 * cnn_scaling)
+    neuron_base = round(64 * rnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
@@ -101,7 +105,7 @@ def build_res_dense(parameters):
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
 
@@ -128,8 +132,8 @@ def Dense(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(la.TimeDistributed(la.Dense(64, activation='tanh')))
-    model.add(la.TimeDistributed(la.Dense(64 * 2, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='sigmoid')))
 
     # Reshape to the desired output shape
@@ -147,7 +151,7 @@ def build_res(parameters):
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)), name='jon'))
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
 
@@ -158,7 +162,8 @@ def build_cnn_res(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter)))
+    model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//4)))
     model.add(ReservoirLayer(750))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
@@ -249,3 +254,17 @@ def build_unet_rnn(parameters):
     unet_model = tf.keras.Model(inputs, outputs, name="U-Net")
 
     return unet_model
+
+
+def build_brain(parameters):
+    mat_size, filter_base, neuron_base, pic_per_mat = parameters
+    model = m.Sequential()
+
+    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
+    model.add(BrainLayer(1000, make_weights=True))
+    model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
+
+    # Reshape to the desired output shape
+    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
+    return model

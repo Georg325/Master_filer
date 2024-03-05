@@ -3,12 +3,12 @@ import time
 from funtion_file import *
 #%%
 matrix_params = {
-    'mat_size': (6, 6),
+    'mat_size': (10, 10),
     'fades_per_mat': 10,
 
     'strength_kernel': (1, 3),
-    'size': [(4, 1), (4, 1)],
-    'rotate': False,
+    'size': [(6, 1), (6, 1)],
+    'rotate': True,
     'new_background': False,
     'shape': 'line',  # 'line', 'triangle', 'face'
 
@@ -20,8 +20,8 @@ matrix_params = {
     'val_new_background': False,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
 }
-# dense, cnn, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense
-model_type = 'res'
+# dense, cnn, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain
+model_type = 'dense'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
@@ -44,6 +44,5 @@ print(f'Training tok {time.time() - start:.2f} s')
 data_handler.save_model(model, 'none', epochs)  # auto, line, triangle, none, custom
 
 #%%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
-                                    movies_to_plot=0, movies_to_show=0,
-                                    both=True, show=False)
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
+                                    plot=True)
