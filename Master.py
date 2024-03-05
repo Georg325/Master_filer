@@ -7,21 +7,22 @@ matrix_params = {
     'fades_per_mat': 10,
 
     'strength_kernel': (1, 3),
-    'size': [(6, 1), (6, 1)],
-    'rotate': True,
+    'size': [(6, 2), (6, 2)],
+    'rotate': False,
     'new_background': False,
     'shape': 'line',  # 'line', 'triangle', 'face'
 
-    'val': False,
+    'val': True,
 
     'val_strength_kernel': (1, 3),
-    'val_size': [(3, 2), (3, 2)],
-    'val_rotate': True,
+    'val_size': [(6, 2), (6, 2)],
+    'val_rotate': False,
     'val_new_background': False,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
+    'subset': True,
 }
-# dense, cnn, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain
-model_type = 'res'
+# dense, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain, cnn_brain
+model_type = 'cnn_rnn'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
@@ -32,7 +33,7 @@ data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 #%%
 batch_size = 250
 batch_num = 15
-epochs = 20
+epochs = 0
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -44,5 +45,5 @@ print(f'Training tok {time.time() - start:.2f} s')
 data_handler.save_model(model, 'none', epochs)  # auto, line, triangle, none, custom
 
 #%%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=True,
                                     plot=True)
