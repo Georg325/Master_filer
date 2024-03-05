@@ -220,11 +220,12 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
         plt.colorbar()
         plt.title('Example weights:')
         plt.show()
+        plt.clf()
     else:
-        plt.imshow(a)
+        plt.imshow(a, cmap='gray')
         plt.colorbar()
         plt.savefig('last_weights.png')
-
+        plt.clf()
     return a
 
 

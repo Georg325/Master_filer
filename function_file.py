@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from models import build_model
 
-import raster_geometry as rg
-
 rng = rd.SystemRandom()
 
 
@@ -122,7 +120,7 @@ class MovieDataHandler:
 
     def plot_matrices(self, model, num_to_pred, interval=500, val=False):
         input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred, val)
-
+        plt.clf()
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
 
         def update(frame):
@@ -163,7 +161,7 @@ class MovieDataHandler:
         return animation
 
     def display_frames(self, model, num_frames=1000, num_to_pred=1, val=False):
-
+        plt.clf()
         for _ in range(num_to_pred):
             num_frames = max(min(self.fades_per_mat, num_frames), 2)
             input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1, val)
@@ -341,7 +339,7 @@ class MovieDataHandler:
             model.save_weights(f'{weights_shape}.weights.h5')
             print(f'Saved custom weights with name {weights_shape}.weights.h5')
 
-    def plot_training_history(self, training_history_object, show, name_note, nr):
+    def plot_training_history(self, training_history_object, show, name_note, end_name, nr=0):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -350,6 +348,7 @@ class MovieDataHandler:
                                       in the training history object. By default, it will
                                       plot all of them in individual subplots.
         """
+        plt.clf()
         history_dict = training_history_object.history
 
         iou_s = []
@@ -377,6 +376,8 @@ class MovieDataHandler:
                 other.append(metric)
 
         train_hist_df = pd.DataFrame(history_dict)
+        train_hist_df.tail(1).round(4).to_csv(f'csv_files/{self.model_type}' + end_name + '.csv')
+
         train_keys = other
         nr_plots = len(other)
 
@@ -438,14 +439,11 @@ class MovieDataHandler:
                 ax[plt_nr].legend()
             if done:
                 plt_nr += 1
-        title = f'Metrics from the '
-        if not self.rotate:
-            title += 'non rotated, '
-        if not self.new_background:
-            title += 'static background, '
 
-        title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
-        filename = f' {self.model_type} on {self.mat_size} with {name_note}'
+        title = f'Metrics from the '
+
+        title += f'{self.model_type} model on {self.mat_size} matrix' + end_name
+        filename = f' {self.model_type} on {self.mat_size}' + end_name
 
         fig.suptitle(title)
         fig.tight_layout()
@@ -462,6 +460,17 @@ class MovieDataHandler:
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
                                movies_to_show=0, with_val=False, both=False, interval=500, plot=True,
                                name_note='test', nr=0):
+
+        end_name = f'_e{epochs}_{self.size[0]}'
+
+        if self.val:
+            end_name += f'_v{self.val_size[0]}'
+
+        end_name += f'_r{str(self.rotate)[0]}_b{str(self.new_background)[0]}'
+
+        if self.val:
+            end_name += f'_rv{str(self.val_rotate)[0]}_bv{str(self.val_new_background)[0]}'
+
         if movies_to_plot > 0:
             if both:
                 self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=True)
@@ -478,7 +487,7 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist, plot, name_note, nr=nr)
+            self.plot_training_history(hist, plot, name_note, end_name, nr=nr)
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -527,6 +536,7 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
 
 
 def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False, alternative=False):
+    import raster_geometry as rg
     rows, cols = mat_size
 
     # smooth
@@ -598,6 +608,7 @@ def set_kernel(str_ker):
 
 
 def plots(matrix, interval=200):
+
     fig, ax = plt.subplots()
 
     def update(frame):
@@ -614,26 +625,31 @@ def plots(matrix, interval=200):
 
 
 def full_triangle(a, b, c):
+    import raster_geometry as rg
     ab = rg.bresenham_line(a, b, endpoint=True)
     for x in set(ab):
         yield from rg.bresenham_line(c, x, endpoint=True)
 
 
-def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note=''):
+def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note='test'):
     if run:
         batch_size, batch_num, epochs = train_param
+
         for f, val_param in enumerate(val_params):
+
             new_dict = {**matrix_params, **val_param}
             data_handler = MovieDataHandler(**new_dict)
+
             for k, model_type in enumerate(model_types):
+
                 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
 
                 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
                 hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
 
-                data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
-                                                    both=True, plot=False, name_note=name_note, nr=k)
+                data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
+                                                    plot=False, name_note=name_note, nr=k)
 
 
 if __name__ == '__main__':
@@ -647,7 +663,7 @@ if __name__ == '__main__':
         'new_background': False,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
-        'val': True,
+        'val': False,
 
         'val_strength_kernel': (1, 3),
         'val_size': [(6, 1), (6, 1)],
@@ -660,8 +676,8 @@ if __name__ == '__main__':
     # 'res', 'cnn_res', 'deep_res', 'res_dense', 'brain'
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    val_param = [{'val_size': [(3, 2), (3, 2)]}, {'val':False}]
-    model_types = ['cnn_rnn', 'res', 'brain']
+    val_param = [{'val_size': [(3, 2), (3, 2)]}]  # , {'val': False}]
+    model_types = ['cnn_rnn', 'res']  # , 'brain']
 
     train_param = [
         250,  # batch_size =
@@ -669,4 +685,4 @@ if __name__ == '__main__':
         60,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='val_6')
+    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='test')
