@@ -132,8 +132,8 @@ def Dense(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(la.TimeDistributed(la.Dense(64, activation='tanh')))
-    model.add(la.TimeDistributed(la.Dense(64 * 2, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='sigmoid')))
 
     # Reshape to the desired output shape

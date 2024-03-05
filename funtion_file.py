@@ -647,7 +647,7 @@ if __name__ == '__main__':
         'new_background': False,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
-        'val': False,
+        'val': True,
 
         'val_strength_kernel': (1, 3),
         'val_size': [(6, 1), (6, 1)],
@@ -660,8 +660,8 @@ if __name__ == '__main__':
     # 'res', 'cnn_res', 'deep_res', 'res_dense', 'brain'
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    val_param = [{'val_size': [(3, 2), (3, 2)]}]
-    model_types = ['cnn', 'rnn']
+    val_param = [{'val_size': [(3, 2), (3, 2)]}, {'val':False}]
+    model_types = ['cnn_rnn', 'res', 'brain']
 
     train_param = [
         250,  # batch_size =
@@ -669,4 +669,4 @@ if __name__ == '__main__':
         60,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='non_val_6')
+    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='val_6')
