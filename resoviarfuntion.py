@@ -191,11 +191,15 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
 
             a[:size // 2, size // 2:] += np.rot90(np.diag(dig))
         else:
-            a[size // 2:, :size // 2] += np.rot90(np.diag(dig, k=i))
-            a[size // 2:, :size // 2] -= np.rot90(np.diag(dig, k=-i))
+            if np.random.choice([True, False], p=[.66, .34]):
+                a[size // 2:, :size // 2] += np.rot90(np.diag(dig, k=i))
+                a[size // 2:, :size // 2] -= np.rot90(np.diag(dig, k=-i))
+            else:
+                print('wow')
 
             a[:size // 2, size // 2:] += np.rot90(np.diag(dig, k=i))
             a[:size // 2, size // 2:] -= np.rot90(np.diag(dig, k=-i))
+
 
     if shuffle:
         rng.shuffle(a[size // 2:, :size // 2], axis=0)
@@ -229,7 +233,7 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     return a
 
 
-# make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
+make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
 
 if '__ma in__' == __name__:
     input_size = 16

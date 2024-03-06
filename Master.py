@@ -22,7 +22,7 @@ matrix_params = {
     'subset': True,
 }
 # dense, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain, cnn_brain
-model_type = 'cnn_rnn'
+model_type = ('brain')
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
@@ -33,7 +33,7 @@ data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 #%%
 batch_size = 250
 batch_num = 15
-epochs = 0
+epochs = 10
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
