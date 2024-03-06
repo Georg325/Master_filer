@@ -687,7 +687,7 @@ def train_multiple(matrix_params, model_types, train_param, val_params, run=Fals
 
                 hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
 
-                data_handler.save_model(model, 'auto', epochs)
+                data_handler.save_model(model, str(model_type), epochs)
 
                 data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
                                                     plot=False, name_note=name_note)
@@ -721,7 +721,6 @@ if __name__ == '__main__':
 
     val__param = [{'val_size': [(3, 4), (3, 4)]},
                   {'subset': True},
-                  {'val': False},
                   {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
 
     model__types = ['cnn_lstm', 'unet', 'cnn_res', 'cnn_brain', 'res', 'brain', 'rnn', 'cnn_rnn']
@@ -729,7 +728,7 @@ if __name__ == '__main__':
     train__param = [
         250,  # batch_size =
         15,  # batch_num =
-        150,  # epochs =
+        15,  # epochs =
     ]
 
     train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='test')

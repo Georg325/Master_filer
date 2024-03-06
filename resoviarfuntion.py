@@ -200,7 +200,6 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
             a[:size // 2, size // 2:] += np.rot90(np.diag(dig, k=i))
             a[:size // 2, size // 2:] -= np.rot90(np.diag(dig, k=-i))
 
-
     if shuffle:
         rng.shuffle(a[size // 2:, :size // 2], axis=0)
         rng.shuffle(a[size // 2:, :size // 2], axis=1)
@@ -233,7 +232,7 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     return a
 
 
-make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
+#  make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
 
 if '__ma in__' == __name__:
     input_size = 16
@@ -256,17 +255,17 @@ if '__ma in__' == __name__:
     output_weights = np.random.randn(output_size, reservoir_size)
     output_var = np.zeros((batch_size, time_steps, output_size))
 
-    for i in range(1, time_steps + 1):
+    for i_ in range(1, time_steps + 1):
         for j in range(input_size):
-            input_var[i, j] = i - 1 + (j + 1) / 2
+            input_var[i_, j] = i_ - 1 + (j + 1) / 2
 
     print('input', input_var.shape)
     print()
 
     mid_cal = [np.concatenate([input_var[0], input_var[0]])]
 
-    for i in range(1, time_steps + 1):
-        mid_cal.append(np.concatenate([input_var[i - 1], input_var[i]]))
+    for i_ in range(1, time_steps + 1):
+        mid_cal.append(np.concatenate([input_var[i_ - 1], input_var[i_]]))
     mid_cal = np.array(mid_cal)
 
     print('mid input', mid_cal.shape)
@@ -283,9 +282,9 @@ if '__ma in__' == __name__:
     print('o2', com.shape)
     print()
 
-    for i in range(time_steps):
-        reservoir_state[i + 1] = update_reservoir(reservoir_state[i], x_var=com[i])
-        output_var[i, :] = output_function(reservoir_state[i + 1])
+    for i_ in range(time_steps):
+        reservoir_state[i_ + 1] = update_reservoir(reservoir_state[i_], x_var=com[i_])
+        output_var[i_, :] = output_function(reservoir_state[i_ + 1])
 
     print('reservoir', reservoir_state.shape)
     print()

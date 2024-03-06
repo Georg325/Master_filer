@@ -22,7 +22,7 @@ matrix_params = {
     'subset': True,
 }
 # dense, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain, cnn_brain
-model_type = ('brain')
+model_type = 'cnn_lstm'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
