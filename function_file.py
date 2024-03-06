@@ -13,14 +13,13 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from models import build_model
 
-import raster_geometry as rg
-
 rng = rd.SystemRandom()
 
 
 class MovieDataHandler:
     def __init__(self, mat_size, fades_per_mat, strength_kernel, size, rotate, new_background, shape,
-                 val, val_strength_kernel=None, val_size=None, val_rotate=0, val_new_background=0, val_shape=0):
+                 val, val_strength_kernel=None, val_size=None, val_rotate=0,
+                 val_new_background=0, val_shape=0, subset=False):
 
         self.mat_size = mat_size
         self.fades_per_mat = fades_per_mat
@@ -37,6 +36,7 @@ class MovieDataHandler:
         self.val_rotate = val_rotate
         self.val_new_background = val_new_background
         self.val_shape = val_shape
+        self.subset = subset
 
         self.val_kernel = set_kernel(val_strength_kernel)
 
@@ -44,6 +44,12 @@ class MovieDataHandler:
         self.ani = None
 
         self.scores = []
+
+        self.file_path = 'weights/'
+        start_name = f'{self.mat_size}{self.model_type}'
+        self.end_name = '.weights.h5'
+        self.triangle_path = self.file_path + start_name + 'triangle' + self.end_name
+        self.line_path = self.file_path + start_name + 'line' + self.end_name
 
     @classmethod
     def from_dict(cls, params):
@@ -106,7 +112,7 @@ class MovieDataHandler:
 
                 sfb = matrix_maker(self.mat_size, kernel, line_size,
                                    self.fades_per_mat,
-                                   new_background=new_background)
+                                   new_background=new_background, subset=self.subset, val=val)
 
             else:
                 print(f'{self.shape} is invalid')
@@ -122,24 +128,21 @@ class MovieDataHandler:
 
     def plot_matrices(self, model, num_to_pred, interval=500, val=False):
         input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred, val)
-
+        plt.clf()
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
 
         def update(frame):
             # Plot Input Matrix
             im = [axes[0].imshow(input_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1)]
             axes[0].set_title('Input Matrix')
-            # axes[0].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
 
             # Plot True Line Position Matrix
             im.append(axes[1].imshow(true_matrix[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
             axes[1].set_title('True Line Position Matrix')
-            # axes[1].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
             # Plot Predicted Line Position Matrix
             im.append(
                 axes[2].imshow(predicted_line_pos_mat[frame], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
             axes[2].set_title('Predicted Line Position Matrix')
-            # axes[2].grid(True, color='white', linestyle='-', linewidth=0.5)  # White grid
 
             return im
 
@@ -163,7 +166,7 @@ class MovieDataHandler:
         return animation
 
     def display_frames(self, model, num_frames=1000, num_to_pred=1, val=False):
-
+        plt.clf()
         for _ in range(num_to_pred):
             num_frames = max(min(self.fades_per_mat, num_frames), 2)
             input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1, val)
@@ -226,21 +229,21 @@ class MovieDataHandler:
 
         print('Possible lines: ', unique_lines)
         if self.val:
-            unique_lines = 0
+            unique__lines = 0
             for i in range(self.val_size[0][0], self.val_size[1][0] + 1):
                 for j in range(self.val_size[0][1], self.val_size[1][1] + 1):
                     possible_row = self.mat_size[0] - i + 1
                     possible_col = self.mat_size[1] - j + 1
-                    unique_lines += possible_row * possible_col
+                    unique__lines += possible_row * possible_col
                     if self.val_rotate:
                         possible_row_r = self.mat_size[0] - j + 1
                         possible_col_r = self.mat_size[1] - i + 1
                         unique_lines += possible_row_r * possible_col_r
-            print('Possible val lines: ', unique_lines)
+            print('Possible val lines: ', unique__lines)
 
     def init_model(self, model_type='cnn_rnn', iou_s=True, info=False, early_stopping=False, cnn_rnn_scale=(1, 1)):
         self.model_type = model_type
-        checkpoint_filepath = 'standard.weights.h5'
+        checkpoint_filepath = self.file_path+'standard'+self.end_name
 
         callbacks = [ks.callbacks.ModelCheckpoint(filepath=checkpoint_filepath, save_weights_only=True,
                                                   monitor='loss', mode='min', save_best_only=True)]
@@ -277,42 +280,43 @@ class MovieDataHandler:
         if weights_shape == 'none':
             return
         elif weights_shape == 'auto':
-            if os.path.exists(f'{self.mat_size}{self.model_type}triangle.weights.h5') and self.shape == 'triangle':
+
+            if os.path.exists(self.triangle_path) and self.shape == 'triangle':
                 try:
-                    model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
+                    model.load_weights(self.triangle_path)
                     print('Loaded triangle weights')
                 except ValueError:
                     print('Could not load triangle weights')
 
-            elif os.path.exists(f'{self.mat_size}{self.model_type}line.weights.h5') and self.shape == 'line':
+            elif os.path.exists(self.line_path) and self.shape == 'line':
                 try:
-                    model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+                    model.load_weights(self.line_path)
                     print('Loaded line weights')
                 except ValueError:
                     print('Could not load line weights')
-            elif os.path.exists('standard.weights.h5'):
+            elif os.path.exists('standard'+self.end_name):
                 try:
-                    model.load_weights(f'standard.weights.h5')
+                    model.load_weights(f'standard'+self.end_name)
                     print('Loaded callback weights')
                 except ValueError:
                     print('Could not load callback weights')
             else:
                 print('Did not find any weights')
         elif weights_shape == 'triangle':
-            model.load_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
+            model.load_weights(self.triangle_path)
             print('Loaded triangle weights')
         elif weights_shape == 'line':
-            model.load_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+            model.load_weights(self.line_path)
             print('Loaded line weights')
         else:
-            if os.path.exists(f'{weights_shape}.weights.h5'):
+            if os.path.exists(f'{weights_shape}'+self.end_name):
                 try:
-                    model.load_weights(f'{weights_shape}.weights.h5')
-                    print(f'Loaded {weights_shape}.weights.h5')
+                    model.load_weights(f'{weights_shape}'+self.end_name)
+                    print(f'Loaded {weights_shape}'+self.end_name)
                 except ValueError:
                     print('Could not load custom weights')
             else:
-                print(f'Did not find weights with name {weights_shape}.weights.h5')
+                print(f'Did not find weights with name {weights_shape}' + self.end_name)
 
     def save_model(self, model, weights_shape='auto', epochs=0):
         if epochs == 0 or weights_shape == 'none':
@@ -320,28 +324,28 @@ class MovieDataHandler:
         elif weights_shape == 'auto':
 
             if self.shape == 'triangle':
-                model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
+                model.save_weights(self.triangle_path)
                 print('Saved triangle weights')
 
             elif self.shape == 'line':
-                model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+                model.save_weights(self.line_path)
                 print('Saved line weights')
             else:
                 print(f'error {self.shape} not recognized')
 
         elif weights_shape == 'triangle':
-            model.save_weights(f'{self.mat_size}{self.model_type}triangle.weights.h5')
+            model.save_weights(self.triangle_path)
             print('Saved triangle weights')
 
         elif weights_shape == 'line':
-            model.save_weights(f'{self.mat_size}{self.model_type}line.weights.h5')
+            model.save_weights(self.line_path)
             print('Saved line weights')
 
         else:
-            model.save_weights(f'{weights_shape}.weights.h5')
-            print(f'Saved custom weights with name {weights_shape}.weights.h5')
+            model.save_weights(f'{weights_shape}' + self.end_name)
+            print(f'Saved custom weights with name {weights_shape}' + self.end_name)
 
-    def plot_training_history(self, training_history_object, show, name_note, nr):
+    def plot_training_history(self, training_history_object, show, name_note, end_name):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -350,6 +354,7 @@ class MovieDataHandler:
                                       in the training history object. By default, it will
                                       plot all of them in individual subplots.
         """
+        plt.clf()
         history_dict = training_history_object.history
 
         iou_s = []
@@ -377,6 +382,8 @@ class MovieDataHandler:
                 other.append(metric)
 
         train_hist_df = pd.DataFrame(history_dict)
+        train_hist_df.tail(1).round(4).to_csv(f'csv_files/{self.model_type}' + end_name + '.csv')
+
         train_keys = other
         nr_plots = len(other)
 
@@ -387,67 +394,83 @@ class MovieDataHandler:
             if self.val:
                 nr_plots += 1
 
-        fig, ax = plt.subplots(1, nr_plots, figsize=(5 * nr_plots, 6))
-
         plt_nr = 0
         done = False
 
-        for i in range(len(other)):
-            ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
-            if self.val:
-                ax[plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
-            ax[plt_nr].set_ylim(0, 1)
-            ax[plt_nr].set_xlabel('Epoch')
-            ax[plt_nr].set_title(train_keys[plt_nr])
-            ax[plt_nr].grid('on')
-            ax[plt_nr].legend()
-            plt_nr += 1
-
-        for k in range(len(preps)):
-            done = True
-            ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
-            if self.val:
-                ax[plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
-            ax[plt_nr].set_ylim(0, 1)
-            ax[plt_nr].set_xlabel('Epoch')
-            ax[plt_nr].set_title('Precision and Recall')
-            ax[plt_nr].grid('on')
-            ax[plt_nr].legend()
-        if done:
-            plt_nr += 1
-            done = False
-
-        for k in range(len(iou_s)):
-            done = True
-            ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
-            ax[plt_nr].set_ylim(0, 1)
-            ax[plt_nr].set_xlabel('Epoch')
-            ax[plt_nr].set_title('IoU')
-            ax[plt_nr].grid('on')
-            ax[plt_nr].legend()
-        if done:
-            plt_nr += 1
-
         if self.val:
+            fig, ax = plt.subplots(2, nr_plots//2, figsize=(2 * nr_plots, 8))
+
+            for i in range(len(other)):
+                ax[0, plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
+                ax[0, plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
+                ax[0, plt_nr].set_ylim(0, 1)
+                ax[0, plt_nr].set_xlabel('Epoch')
+                ax[0, plt_nr].set_title(train_keys[plt_nr])
+                ax[0, plt_nr].grid('on')
+                ax[0, plt_nr].legend()
+            plt_nr += 1
+
+            for k in range(len(preps)):
+                ax[0, plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
+                ax[0, plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
+                ax[0, plt_nr].set_ylim(0, 1)
+                ax[0, plt_nr].set_xlabel('Epoch')
+                ax[0, plt_nr].set_title('Precision and Recall')
+                ax[0, plt_nr].grid('on')
+                ax[0, plt_nr].legend()
+
+            plt_nr = 0
             for k in range(len(iou_s)):
-                ax[plt_nr].plot(np.array(train_hist_df[val_iou_s[k]]), label=f'Frame {k + 1}')
+                ax[1, plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
+                ax[1, plt_nr].set_ylim(0, 1)
+                ax[1, plt_nr].set_xlabel('Epoch')
+                ax[1, plt_nr].set_title('IoU')
+                ax[1, plt_nr].grid('on')
+                ax[1, plt_nr].legend()
+            plt_nr += 1
+            for k in range(len(iou_s)):
+                ax[1, plt_nr].plot(np.array(train_hist_df[val_iou_s[k]]), label=f'Frame {k + 1}')
+                ax[1, plt_nr].set_ylim(0, 1)
+                ax[1, plt_nr].set_xlabel('Epoch')
+                ax[1, plt_nr].set_title('val_IoU')
+                ax[1, plt_nr].grid('on')
+                ax[1, plt_nr].legend()
+            plt_nr += 1
+        else:
+            fig, ax = plt.subplots(1, nr_plots, figsize=(4 * nr_plots, 5))
+
+            for i in range(len(other)):
+                ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
+                if self.val:
+                    ax[plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
                 ax[plt_nr].set_ylim(0, 1)
                 ax[plt_nr].set_xlabel('Epoch')
-                ax[plt_nr].set_title('val_IoU')
+                ax[plt_nr].set_title(train_keys[plt_nr])
+                ax[plt_nr].grid('on')
+                ax[plt_nr].legend()
+            plt_nr += 1
+
+            for k in range(len(preps)):
+                ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
+                if self.val:
+                    ax[plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
+                ax[plt_nr].set_ylim(0, 1)
+                ax[plt_nr].set_xlabel('Epoch')
+                ax[plt_nr].set_title('Precision and Recall')
                 ax[plt_nr].grid('on')
                 ax[plt_nr].legend()
             if done:
                 plt_nr += 1
-        title = f'Metrics from the '
-        if not self.rotate:
-            title += 'non rotated, '
-        if not self.new_background:
-            title += 'static background, '
 
-        title += f'{self.shape}, {self.model_type} model on {self.mat_size} matrix'
-        filename = f' {self.model_type} on {self.mat_size} with {name_note}'
+            for k in range(len(iou_s)):
+                ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
+                ax[plt_nr].set_ylim(0, 1)
+                ax[plt_nr].set_xlabel('Epoch')
+                ax[plt_nr].set_title('IoU')
+                ax[plt_nr].grid('on')
+                ax[plt_nr].legend()
 
-        fig.suptitle(title)
+        fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix' + end_name)
         fig.tight_layout()
         if show:
             plt.show()
@@ -456,12 +479,23 @@ class MovieDataHandler:
                 os.makedirs(name_note)
 
             # Save the plot inside the folder
-            file_path = os.path.join(name_note, filename + ' ' + str(nr))
+            file_path = os.path.join(name_note, f'{self.model_type} on {self.mat_size}' + end_name)
             plt.savefig(file_path)
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
                                movies_to_show=0, with_val=False, both=False, interval=500, plot=True,
-                               name_note='test', nr=0):
+                               name_note='test'):
+
+        end_name = f'_e{epochs}_{self.size[0]}'
+
+        if self.val:
+            end_name += f'_v{self.val_size[0]}'
+
+        end_name += f'_r{str(self.rotate)[0]}_b{str(self.new_background)[0]}'
+
+        if self.val:
+            end_name += f'_rv{str(self.val_rotate)[0]}_bv{str(self.val_new_background)[0]}'
+
         if movies_to_plot > 0:
             if both:
                 self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=True)
@@ -478,18 +512,33 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist, plot, name_note, nr=nr)
+            self.plot_training_history(hist, plot, name_note, end_name)
 
 
-def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False):
+def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False, subset=False, val=False):
     rows, cols = mat_size
 
     # smooth
     smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
     # line_start
-    line_start_position = (rng.randint(0, rows - line_size[0]),
-                           rng.randint(0, cols - line_size[1]))
+    pos_size = rows - line_size[0], cols - line_size[1]
+    possible_line_pos = np.arange(pos_size[0]), np.arange(pos_size[1])
+
+    if subset:
+        np.random.shuffle(possible_line_pos[0])
+        np.random.shuffle(possible_line_pos[1])
+
+        if val:
+            line_start_position = (np.random.choice(possible_line_pos[0][pos_size[0] // 2:]),
+                                   np.random.choice(possible_line_pos[1][pos_size[1] // 2:]))
+        else:
+            line_start_position = (np.random.choice(possible_line_pos[0][:pos_size[0] // 2]),
+                                   np.random.choice(possible_line_pos[1][:pos_size[1] // 2]))
+
+    else:
+        line_start_position = (np.random.choice(possible_line_pos[0]),
+                               np.random.choice(possible_line_pos[1]))
 
     # alfa
     alfa = np.linspace(1, 0, num=num_per_mat)
@@ -527,6 +576,7 @@ def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_backgrou
 
 
 def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False, alternative=False):
+    import raster_geometry as rg
     rows, cols = mat_size
 
     # smooth
@@ -598,6 +648,7 @@ def set_kernel(str_ker):
 
 
 def plots(matrix, interval=200):
+
     fig, ax = plt.subplots()
 
     def update(frame):
@@ -614,59 +665,71 @@ def plots(matrix, interval=200):
 
 
 def full_triangle(a, b, c):
+    import raster_geometry as rg
     ab = rg.bresenham_line(a, b, endpoint=True)
     for x in set(ab):
         yield from rg.bresenham_line(c, x, endpoint=True)
 
 
-def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note=''):
+def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note='test'):
     if run:
         batch_size, batch_num, epochs = train_param
+
         for f, val_param in enumerate(val_params):
+
             new_dict = {**matrix_params, **val_param}
             data_handler = MovieDataHandler(**new_dict)
-            for k, model_type in enumerate(model_types):
+
+            for model_type in model_types:
                 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
 
                 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
                 hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
 
-                data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0,
-                                                    both=True, plot=False, name_note=name_note, nr=k)
+                data_handler.save_model(model, 'auto', epochs)
+
+                data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
+                                                    plot=False, name_note=name_note)
 
 
 if __name__ == '__main__':
-    matrix_params = {
+    matrix__params = {
         'mat_size': (10, 10),
         'fades_per_mat': 10,
 
         'strength_kernel': (1, 3),
-        'size': [(6, 1), (6, 1)],
+        'size': [(6, 2), (6, 2)],
         'rotate': True,
-        'new_background': False,
+        'new_background': True,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
         'val': True,
 
         'val_strength_kernel': (1, 3),
-        'val_size': [(6, 1), (6, 1)],
+        'val_size': [(6, 2), (6, 2)],
         'val_rotate': True,
-        'val_new_background': False,
+        'val_new_background': True,
         'val_shape': 'line',  # 'line', 'triangle', 'face'
+        'subset': False,
     }
 
     # 'dense', 'cnn', 'cnn_lstm',
     # 'res', 'cnn_res', 'deep_res', 'res_dense', 'brain'
     # 'rnn', 'cnn_rnn',
     # 'unet', 'unet_rnn'
-    val_param = [{'val_size': [(3, 2), (3, 2)]}, {'val':False}]
-    model_types = ['cnn_rnn', 'res', 'brain']
 
-    train_param = [
+    val__param = [{'val_size': [(3, 4), (3, 4)]},
+                  {'subset': True},
+                  {'val': False},
+                  {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
+
+    model__types = ['cnn_lstm', 'unet', 'cnn_res', 'cnn_brain', 'res', 'brain', 'rnn', 'cnn_rnn']
+
+    train__param = [
         250,  # batch_size =
         15,  # batch_num =
-        60,  # epochs =
+        150,  # epochs =
     ]
 
-    train_multiple(matrix_params, model_types, train_param, val_param, run=True, name_note='val_6')
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='test')
