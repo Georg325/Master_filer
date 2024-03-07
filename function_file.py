@@ -729,7 +729,7 @@ if __name__ == '__main__':
     val__param = [{'val_size': [(3, 4), (3, 4)], 'subset': True},
                   {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
 
-    model__types = ['unet'] # , 'unet', 'cnn_res', 'cnn_brain', 'res', 'brain', 'rnn', 'cnn_rnn']
+    model__types = ['unet', 'cnn-res', 'cnn-brain', 'res', 'brain', 'rnn', 'cnn-rnn', 'cnn-lstm']
 
     train__param = [
         1000,  # batch_size =
