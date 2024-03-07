@@ -732,9 +732,9 @@ if __name__ == '__main__':
     model__types = ['unet'] # , 'unet', 'cnn_res', 'cnn_brain', 'res', 'brain', 'rnn', 'cnn_rnn']
 
     train__param = [
-        250,  # batch_size =
-        15,  # batch_num =
-        150,  # epochs =
+        1000,  # batch_size =
+        5,  # batch_num =
+        100,  # epochs =
     ]
 
     train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='test')
