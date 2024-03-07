@@ -1,5 +1,3 @@
-import time
-
 from function_file import *
 #%%
 matrix_params = {
@@ -8,21 +6,21 @@ matrix_params = {
 
     'strength_kernel': (1, 3),
     'size': [(6, 2), (6, 2)],
-    'rotate': False,
-    'new_background': False,
+    'rotate': True,
+    'new_background': True,
     'shape': 'line',  # 'line', 'triangle', 'face'
 
     'val': True,
 
     'val_strength_kernel': (1, 3),
-    'val_size': [(6, 2), (6, 2)],
-    'val_rotate': False,
-    'val_new_background': False,
+    'val_size': [(4, 3), (4, 3)],
+    'val_rotate': True,
+    'val_new_background': True,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
     'subset': True,
 }
-# dense, cnn_lstm, res, cnn_res, rnn, cnn_rnn, unet, unet_rnn, res_dense, brain, cnn_brain
-model_type = 'cnn_lstm'
+# dense, cnn-lstm, res, cnn-res, rnn, cnn-rnn, unet, unet-rnn, res-dense, brain, cnn-brain
+model_type = 'dense'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
@@ -32,8 +30,8 @@ data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 
 #%%
 batch_size = 250
-batch_num = 15
-epochs = 10
+batch_num = 25
+epochs = 2
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 

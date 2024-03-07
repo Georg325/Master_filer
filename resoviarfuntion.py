@@ -182,7 +182,7 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     a = np.concatenate((np.concatenate((rt, zer), axis=1), np.concatenate((zer, lb), axis=1)), axis=0)
 
     if num is None:
-        num = min(a.max()*0.25, 0.4)
+        num = min(a.max()*.8, 0.4)
 
     for i in range(thickness):
         dig = np.random.choice((num, -num), size=size//2 - i)
@@ -232,9 +232,8 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     return a
 
 
-#  make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
-
 if '__ma in__' == __name__:
+    make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
     input_size = 16
     reservoir_size = 20
     output_size = 7

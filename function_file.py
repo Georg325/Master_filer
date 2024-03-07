@@ -1,5 +1,5 @@
 import os
-
+import time
 from ml_funtions import *
 
 import numpy as np
@@ -342,10 +342,10 @@ class MovieDataHandler:
             print('Saved line weights')
 
         else:
-            model.save_weights(f'{weights_shape}' + self.end_name)
+            model.save_weights(f'{self.file_path}{weights_shape}' + self.end_name)
             print(f'Saved custom weights with name {weights_shape}' + self.end_name)
 
-    def plot_training_history(self, training_history_object, show, name_note, end_name):
+    def plot_training_history(self, training_history_object, show, name_note, end_name, train_time=None):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -382,7 +382,14 @@ class MovieDataHandler:
                 other.append(metric)
 
         train_hist_df = pd.DataFrame(history_dict)
-        train_hist_df.tail(1).round(4).to_csv(f'csv_files/{self.model_type}' + end_name + '.csv')
+        if train_time == None:
+            train_hist_df.tail(1).round(4).to_csv(
+                f'csv_files/{self.model_type}' + end_name + '.csv')
+        else:
+
+            trn = train_hist_df.tail(1)
+            trn.insert(1, 'Train_time', train_time)
+            trn.round(4).to_csv(f'csv_files/{self.model_type}' + end_name + '.csv')
 
         train_keys = other
         nr_plots = len(other)
@@ -484,7 +491,7 @@ class MovieDataHandler:
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
                                movies_to_show=0, with_val=False, both=False, interval=500, plot=True,
-                               name_note='test'):
+                               name_note='test', train_time=None):
 
         end_name = f'_e{epochs}_{self.size[0]}'
 
@@ -494,7 +501,7 @@ class MovieDataHandler:
         end_name += f'_r{str(self.rotate)[0]}_b{str(self.new_background)[0]}'
 
         if self.val:
-            end_name += f'_rv{str(self.val_rotate)[0]}_bv{str(self.val_new_background)[0]}'
+            end_name += f'_rv{str(self.val_rotate)[0]}_bv{str(self.val_new_background)[0]}_sub{str(self.subset)[0]}'
 
         if movies_to_plot > 0:
             if both:
@@ -512,7 +519,7 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist, plot, name_note, end_name)
+            self.plot_training_history(hist, plot, name_note, end_name, train_time=train_time)
 
 
 def matrix_maker(mat_size, kernel, line_size=(1, 2), num_per_mat=3, new_background=False, subset=False, val=False):
@@ -684,13 +691,13 @@ def train_multiple(matrix_params, model_types, train_param, val_params, run=Fals
                 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
 
                 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
-
+                start = time.time()
                 hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
-
+                train_time = time.time() - start
                 data_handler.save_model(model, str(model_type), epochs)
 
                 data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
-                                                    plot=False, name_note=name_note)
+                                                    plot=False, name_note=name_note, train_time=train_time)
 
 
 if __name__ == '__main__':
@@ -714,21 +721,20 @@ if __name__ == '__main__':
         'subset': False,
     }
 
-    # 'dense', 'cnn', 'cnn_lstm',
-    # 'res', 'cnn_res', 'deep_res', 'res_dense', 'brain'
-    # 'rnn', 'cnn_rnn',
-    # 'unet', 'unet_rnn'
+    # 'dense', 'cnn', 'cnn-lstm',
+    # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
+    # 'rnn', 'cnn-rnn',
+    # 'unet', 'unet-rnn'
 
-    val__param = [{'val_size': [(3, 4), (3, 4)]},
-                  {'subset': True},
+    val__param = [{'val_size': [(3, 4), (3, 4)], 'subset': True},
                   {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
 
-    model__types = ['cnn_lstm', 'unet', 'cnn_res', 'cnn_brain', 'res', 'brain', 'rnn', 'cnn_rnn']
+    model__types = ['unet'] # , 'unet', 'cnn_res', 'cnn_brain', 'res', 'brain', 'rnn', 'cnn_rnn']
 
     train__param = [
         250,  # batch_size =
         15,  # batch_num =
-        15,  # epochs =
+        150,  # epochs =
     ]
 
     train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='test')

@@ -9,7 +9,7 @@ from resoviarfuntion import BrainLayer
 
 def build_model(model_type, parameters):
     model_type = model_type.lower()
-    if model_type == 'cnn_rnn':
+    if model_type == 'cnn-rnn':
         return build_cnn_rnn(parameters)
     elif model_type == 'cnn':
         return build_cnn(parameters)
@@ -19,21 +19,21 @@ def build_model(model_type, parameters):
         return Dense(parameters)
     elif model_type == 'rnn':
         return build_rnn(parameters)
-    elif model_type == 'cnn_lstm':
+    elif model_type == 'cnn-lstm':
         return build_cnn_lstm(parameters)
     elif model_type == 'unet':
         return build_unet(parameters)
-    elif model_type == 'cnn_res':
+    elif model_type == 'cnn-res':
         return build_cnn_res(parameters)
-    elif model_type == 'unet_rnn':
+    elif model_type == 'unet-rnn':
         return build_unet_rnn(parameters)
-    elif model_type == 'res_dense':
+    elif model_type == 'res-dense':
         return build_res_dense(parameters)
-    elif model_type == 'deep_res':
+    elif model_type == 'deep-res':
         return build_deep_res(parameters)
     elif model_type == 'brain':
         return build_brain(parameters)
-    elif model_type == 'cnn_brain':
+    elif model_type == 'cnn-brain':
         return build_cnn_brain(parameters)
     breakpoint('error')
 
