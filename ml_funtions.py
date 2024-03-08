@@ -165,7 +165,7 @@ def custom_iou(y_true, y_pred):
     """
     iou_per_timestep = []
 
-    # Iterate over timesteps
+    # Iterate over time steps
     for t in range(y_true.shape[1]):
         # Extract labels for the current timestep
         y_true_timestep = tf.cast(y_true[:, t, :, :], tf.float32)
