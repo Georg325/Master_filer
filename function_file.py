@@ -167,7 +167,6 @@ class MovieDataHandler:
         return animation
 
     def display_frames(self, model, num_frames=1000, num_to_pred=1, val=False):
-        plt.clf()
         for _ in range(num_to_pred):
             num_frames = max(min(self.fades_per_mat, num_frames), 2)
             input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1, val)
@@ -360,7 +359,6 @@ class MovieDataHandler:
                                       in the training history object. By default, it will
                                       plot all of them in individual subplots.
         """
-        plt.clf()
         history_dict = training_history_object.history
 
         iou_s = []
@@ -372,6 +370,7 @@ class MovieDataHandler:
         val_other = []
 
         list_of_metrics = [key for key in list(history_dict.keys())]
+        print(list_of_metrics)
 
         for metric in list_of_metrics:
             if 'val_IoU' in metric:
@@ -475,8 +474,7 @@ class MovieDataHandler:
                 ax[plt_nr].set_title('Precision and Recall')
                 ax[plt_nr].grid('on')
                 ax[plt_nr].legend()
-            if done:
-                plt_nr += 1
+            plt_nr += 1
 
             for k in range(len(iou_s)):
                 ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
@@ -486,13 +484,15 @@ class MovieDataHandler:
                 ax[plt_nr].grid('on')
                 ax[plt_nr].legend()
 
-        fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix' + end_name)
-        fig.tight_layout()
+
         if show:
+            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix' + end_name)
+            fig.tight_layout()
             plt.show()
         else:
             make_folder(name_note)
-
+            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix' + end_name)
+            fig.tight_layout()
             # Save the plot inside the folder
             file_path = os.path.join(name_note, f'{self.model_type} on {self.mat_size}' + end_name)
             plt.savefig(file_path)
@@ -517,7 +517,6 @@ class MovieDataHandler:
                 self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=False)
             else:
                 self.display_frames(model, num_frames=frames_to_show, num_to_pred=movies_to_plot, val=with_val)
-            plt.show()
 
         if movies_to_show > 0:
             if both:
@@ -654,12 +653,15 @@ def rotater(line):
 
 def set_kernel(str_ker):
     strength, kernel_size = str_ker
+    center = (kernel_size - 1) / 2  # Calculate the center of the kernel
+
     kernel = np.fromfunction(
         lambda x, y: np.exp(
-            -((x - (kernel_size - 1)) ** 2 +
-              (y - (kernel_size - 1)) ** 2)
+            -((x - center) ** 2 +
+              (y - center) ** 2)
             / (2 * strength ** 2)),
         (kernel_size, kernel_size))
+
     return kernel / np.sum(kernel)
 
 
