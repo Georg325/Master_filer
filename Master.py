@@ -20,7 +20,7 @@ matrix_params = {
     'subset': True,
 }
 # dense, cnn-lstm, res, cnn-res, rnn, cnn-rnn, unet, unet-rnn, res-dense, brain, cnn-brain
-model_type = 'dense'
+model_type = 'cnn-lstm'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
@@ -29,9 +29,9 @@ model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 
 #%%
-batch_size = 250
-batch_num = 25
-epochs = 2
+batch_size = 500
+batch_num = 10
+epochs = 0
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 

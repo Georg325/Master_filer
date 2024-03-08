@@ -45,7 +45,8 @@ class MovieDataHandler:
 
         self.scores = []
 
-        self.file_path = 'weights/'
+        self.file_name = 'weights'
+        self.file_path = self.file_name + '/'
         start_name = f'{self.mat_size}{self.model_type}'
         self.end_name = '.weights.h5'
         self.triangle_path = self.file_path + start_name + 'triangle' + self.end_name
@@ -324,24 +325,29 @@ class MovieDataHandler:
         elif weights_shape == 'auto':
 
             if self.shape == 'triangle':
+                make_folder(self.file_name)
                 model.save_weights(self.triangle_path)
                 print('Saved triangle weights')
 
             elif self.shape == 'line':
+                make_folder(self.file_name)
                 model.save_weights(self.line_path)
                 print('Saved line weights')
             else:
                 print(f'error {self.shape} not recognized')
 
         elif weights_shape == 'triangle':
+            make_folder(self.file_name)
             model.save_weights(self.triangle_path)
             print('Saved triangle weights')
 
         elif weights_shape == 'line':
+            make_folder(self.file_name)
             model.save_weights(self.line_path)
             print('Saved line weights')
 
         else:
+            make_folder(self.file_name)
             model.save_weights(f'{self.file_path}{weights_shape}' + self.end_name)
             print(f'Saved custom weights with name {weights_shape}' + self.end_name)
 
@@ -382,6 +388,9 @@ class MovieDataHandler:
                 other.append(metric)
 
         train_hist_df = pd.DataFrame(history_dict)
+
+        make_folder('csv_files')
+
         if train_time == None:
             train_hist_df.tail(1).round(4).to_csv(
                 f'csv_files/{self.model_type}' + end_name + '.csv')
@@ -482,8 +491,7 @@ class MovieDataHandler:
         if show:
             plt.show()
         else:
-            if not os.path.exists(name_note):
-                os.makedirs(name_note)
+            make_folder(name_note)
 
             # Save the plot inside the folder
             file_path = os.path.join(name_note, f'{self.model_type} on {self.mat_size}' + end_name)
@@ -647,11 +655,74 @@ def rotater(line):
 def set_kernel(str_ker):
     strength, kernel_size = str_ker
     kernel = np.fromfunction(
-        lambda x, y: (1 / (2 * np.pi * strength ** 2)) * np.exp(
-            -((x - (kernel_size - 1) / 2) ** 2 +
-              (y - (kernel_size - 1) / 2) ** 2) / (2 * strength ** 2)),
+        lambda x, y: np.exp(
+            -((x - (kernel_size - 1)) ** 2 +
+              (y - (kernel_size - 1)) ** 2)
+            / (2 * strength ** 2)),
         (kernel_size, kernel_size))
     return kernel / np.sum(kernel)
+
+
+def combine_csv_files(output_filename='combined_data', to_csv=True, excel=False):
+    folder_path = 'csv_files/'
+    # Initialize an empty DataFrame to store the combined data
+    combined_data = pd.DataFrame()
+
+    # Loop through all files in the folder
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.csv'):
+            file_path = os.path.join(folder_path, filename)
+
+            # Read the CSV file into a DataFrame
+            df = pd.read_csv(file_path)
+            # Add a new column with the folder name as an identifier
+            components = filename.split('_')
+
+            # Extract relevant information from the components
+            size = components[2]
+
+            val_present = 'v' in components[3]
+            if val_present:
+                val_size = components[3][1:]
+                rotate = components[4][-1] == 'T'
+                new_background = components[5][-1] == 'T'
+                val_rotate = components[6][-1] == 'T'
+                val_new_background = components[7][-1] == 'T'
+                subset = components[8][-1] == 'T'
+            else:
+                rotate = components[3][-1] == 'T'
+                new_background = components[4][-1] == 'T'
+                val_size = None
+                val_rotate = None
+                val_new_background = None
+                subset = None
+
+            df.insert(0, 'Name', components[0])
+            df['LineSize'] = size
+            df['Rotate'] = rotate
+            df['NewBackground'] = new_background
+
+            df['ValLineSize'] = val_size
+            df['ValRotate'] = val_rotate
+            df['ValNewBackground'] = val_new_background
+            df['Subset'] = subset
+
+            # Concatenate the data to the combined DataFrame
+            combined_data = pd.concat([combined_data, df], ignore_index=True)
+
+    # Save the combined data to a new CSV file
+    combined_data.rename(columns={'Unnamed: 0': 'Epochs'}, inplace=True)
+    combined_data['Epochs'] = combined_data['Epochs'] + 1
+
+    if to_csv:
+        combined_data.to_csv(output_filename + '.csv', index=False)
+    if excel:
+        combined_data.to_excel(output_filename + '.xlsx', index=False)
+
+
+def make_folder(folder_name):
+    if not os.path.exists(folder_name):
+        os.mkdir(folder_name)
 
 
 def plots(matrix, interval=200):
@@ -711,7 +782,7 @@ if __name__ == '__main__':
         'new_background': True,
         'shape': 'line',  # 'line', 'triangle', 'face'
 
-        'val': True,
+        'val': False,
 
         'val_strength_kernel': (1, 3),
         'val_size': [(6, 2), (6, 2)],
@@ -721,20 +792,20 @@ if __name__ == '__main__':
         'subset': False,
     }
 
+    val__param = [{'val_size': [(3, 4), (3, 4)], 'subset': True},
+                  {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
+
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
-
-    val__param = [{'val_size': [(3, 4), (3, 4)], 'subset': True},
-                  {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
-
-    model__types = ['unet', 'cnn-res', 'cnn-brain', 'res', 'brain', 'rnn', 'cnn-rnn', 'cnn-lstm']
+    model__types = ['cnn-res', 'cnn-brain', 'res', 'brain', 'rnn', 'cnn-rnn', ]
 
     train__param = [
-        1000,  # batch_size =
-        5,  # batch_num =
-        100,  # epochs =
+        100,  # batch_size =
+        10,  # batch_num =
+        20,  # epochs =
     ]
 
     train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='test')
+    # combine_csv_files()
