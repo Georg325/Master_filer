@@ -237,32 +237,27 @@ class MovieDataHandler:
 
             fig.suptitle(title)
 
-    '''def unique_lines(self):
+    def unique_lines(self):
         unique_lines = 0
-        for i in range(self.size[0][0], self.size[1][0] + 1):
-            for j in range(self.size[0][1], self.size[1][1] + 1):
-                possible_row = self.mat_size[0] - i + 1
-                possible_col = self.mat_size[1] - j + 1
-                unique_lines += possible_row * possible_col
-                if self.rotate:
-                    possible_row_r = self.mat_size[0] - j + 1
-                    possible_col_r = self.mat_size[1] - i + 1
-                    unique_lines += possible_row_r * possible_col_r
+        possible_row = self.mat_size[0] - self.size[0] + 1
+        possible_col = self.mat_size[1] - self.size[1] + 1
+        unique_lines += possible_row * possible_col
+        if self.rotate:
+            possible_row_r = self.mat_size[0] - self.size[1] + 1
+            possible_col_r = self.mat_size[1] - self.size[0] + 1
+            unique_lines += possible_row_r * possible_col_r
 
         print('Possible lines: ', unique_lines)
         if self.val:
             unique__lines = 0
-            for i in range(self.val_size[0][0], self.val_size[1][0] + 1):
-                for j in range(self.val_size[0][1], self.val_size[1][1] + 1):
-                    possible_row = self.mat_size[0] - i + 1
-                    possible_col = self.mat_size[1] - j + 1
-                    unique__lines += possible_row * possible_col
-                    if self.val_rotate:
-                        possible_row_r = self.mat_size[0] - j + 1
-                        possible_col_r = self.mat_size[1] - i + 1
-                        unique_lines += possible_row_r * possible_col_r
+            possible_row = self.mat_size[0] - self.val_size[0] + 1
+            possible_col = self.mat_size[1] - self.val_size[1] + 1
+            unique__lines += possible_row * possible_col
+            if self.val_rotate:
+                possible_row_r = self.mat_size[0] - self.val_size[1] + 1
+                possible_col_r = self.mat_size[1] - self.val_size[0] + 1
+                unique_lines += possible_row_r * possible_col_r
             print('Possible val lines: ', unique__lines)
-'''
 
     def init_model(self, model_type='cnn_rnn', iou_s=True, info=False, early_stopping=False, cnn_rnn_scale=(1, 1)):
         self.model_type = model_type
@@ -667,63 +662,6 @@ def set_kernel(str_ker):
     return kernel / np.sum(kernel)
 
 
-def combine_csv_files(output_filename='combined_data', to_csv=True, excel=False):
-    folder_path = 'csv_files/'
-    # Initialize an empty DataFrame to store the combined data
-    combined_data = pd.DataFrame()
-
-    # Loop through all files in the folder
-    for filename in os.listdir(folder_path):
-        if filename.endswith('.csv'):
-            file_path = os.path.join(folder_path, filename)
-
-            # Read the CSV file into a DataFrame
-            df = pd.read_csv(file_path)
-            # Add a new column with the folder name as an identifier
-            components = filename.split('_')
-
-            # Extract relevant information from the components
-            size = components[2]
-
-            val_present = 'v' in components[3]
-            if val_present:
-                val_size = components[3][1:]
-                rotate = components[4][-1] == 'T'
-                new_background = components[5][-1] == 'T'
-                val_rotate = components[6][-1] == 'T'
-                val_new_background = components[7][-1] == 'T'
-                subset = components[8][-1] == 'T'
-            else:
-                rotate = components[3][-1] == 'T'
-                new_background = components[4][-1] == 'T'
-                val_size = None
-                val_rotate = None
-                val_new_background = None
-                subset = None
-
-            df.insert(0, 'Name', components[0])
-            df['LineSize'] = size
-            df['Rotate'] = rotate
-            df['NewBackground'] = new_background
-
-            df['ValLineSize'] = val_size
-            df['ValRotate'] = val_rotate
-            df['ValNewBackground'] = val_new_background
-            df['Subset'] = subset
-
-            # Concatenate the data to the combined DataFrame
-            combined_data = pd.concat([combined_data, df], ignore_index=True)
-
-    # Save the combined data to a new CSV file
-    combined_data.rename(columns={'Unnamed: 0': 'Epochs'}, inplace=True)
-    combined_data['Epochs'] = combined_data['Epochs'] + 1
-
-    if to_csv:
-        combined_data.to_csv(output_filename + '.csv', index=False)
-    if excel:
-        combined_data.to_excel(output_filename + '.xlsx', index=False)
-
-
 def make_folder(folder_name):
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
@@ -795,13 +733,14 @@ if __name__ == '__main__':
         'subset': False,
     }
 
-    val__param = [{'rotate': False, 'val_size': (2, 6), 'val_rotate': False}]  # {'val_size': (3, 4), 'subset': True},
+    val__param = [{'val_size': (
+    3, 4)}]  # [{'rotate': False, 'val_size': (2, 6), 'val_rotate': False}]  # {'val_size': (3, 4), 'subset': True},
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
-    model__types = ['cnn-lstm', ]
+    model__types = ['cnn', 'cnn-rnn', ]
 
     train__param = [
         500,  # batch_size =
@@ -809,5 +748,5 @@ if __name__ == '__main__':
         50,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='master2')
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='small_test')
     # combine_csv_files()

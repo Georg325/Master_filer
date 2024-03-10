@@ -44,7 +44,7 @@ def build_cnn(parameters):
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(7, 7), activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(7, 7), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.Conv2D(filter_base * 2, kernel_size=(5, 5), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.Conv2D(filter_base * 4, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.Conv2D(filter_base * 4, kernel_size=(2, 2), padding='same', activation='relu')))
