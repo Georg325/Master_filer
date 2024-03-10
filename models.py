@@ -64,12 +64,9 @@ def build_cnn_rnn(parameters):
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='tanh')))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), padding='same', activation='tanh')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
 
     model.add(la.TimeDistributed(la.Flatten()))
-
-    model.add(la.LSTM(neuron_base * 2, activation='tanh', return_sequences=True, recurrent_regularizer='l2'))
     model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True))
     model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True, recurrent_regularizer='l2'))
 
@@ -186,9 +183,8 @@ def build_cnn_brain(parameters):
     model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//4)))
-    model.add(BrainLayer(550))
+    model.add(BrainLayer(550, make_weights=True, half_input=True, half_output=True))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
-
     # Reshape to the desired output shape
     model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
@@ -201,9 +197,8 @@ def build_rnn(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Flatten()))
-    model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True, recurrent_regularizer='l2'))
-    model.add(la.LSTM(neuron_base * 2, activation='tanh', return_sequences=True, recurrent_regularizer='l2'))
-    model.add(la.LSTM(neuron_base * 4, activation='tanh', return_sequences=True))
+    model.add(la.LSTM(200, activation='tanh', return_sequences=True))
+    model.add(la.LSTM(150, activation='tanh', return_sequences=True))
 
     model.add(la.TimeDistributed(la.Dense(mat_size[0] * mat_size[1], activation='sigmoid')))
 
@@ -284,7 +279,7 @@ def build_brain(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(BrainLayer(700, make_weights=False))
+    model.add(BrainLayer(700, make_weights=True, half_input=True, half_output=True))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape

@@ -89,6 +89,9 @@ class BrainLayer(tf.keras.layers.Layer):
         self.in_cor = None
         self.out_cor = None
 
+        self.half_output = half_output
+        self.half_input = half_input
+
         if make_weights:
             self.made_weights = make_rec_weights(reservoir_size, thickness=33)
 
@@ -122,13 +125,20 @@ class BrainLayer(tf.keras.layers.Layer):
                                                initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
                                                )
 
-        out_cor = np.zeros((self.reservoir_size // 2, self.reservoir_size // 2), dtype=np.float32)
-        dig = np.diag(np.ones((self.reservoir_size // 2)))
-        out_cor = np.concatenate((out_cor, dig), axis=1, dtype=np.float32)
+        if self.half_output:
+            out_cor = np.zeros((self.reservoir_size // 2, self.reservoir_size // 2), dtype=np.float32)
+            dig = np.diag(np.ones((self.reservoir_size // 2)))
+            self.out_cor = np.concatenate((out_cor, dig), axis=1, dtype=np.float32)
+        else:
+            self.out_cor = np.eye(self.reservoir_size)
 
-        self.in_cor = np.diag(np.concatenate(
-            (np.ones(self.reservoir_size // 2), np.zeros(self.reservoir_size // 2)), axis=0, dtype=np.float32))
-        self.out_cor = out_cor
+        if self.half_input:
+            self.in_cor = np.diag(np.concatenate(
+                (np.ones(self.reservoir_size // 2),
+                 np.zeros(self.reservoir_size // 2)),
+                axis=0, dtype=np.float32))
+        else:
+            self.in_cor = np.eye(self.reservoir_size)
 
         super(BrainLayer, self).build(input_shape)
 
@@ -182,10 +192,10 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     a = np.concatenate((np.concatenate((rt, zer), axis=1), np.concatenate((zer, lb), axis=1)), axis=0)
 
     if num is None:
-        num = min(a.max()*.8, 0.4)
+        num = min(a.max() * .5, 0.4)
 
     for i in range(thickness):
-        dig = np.random.choice((num, -num), size=size//2 - i)
+        dig = np.random.choice((num, -num), size=size // 2 - i)
         if i == 0:
             a[size // 2:, :size // 2] += np.rot90(np.diag(dig))
 
@@ -194,9 +204,6 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
             if np.random.choice([True, False], p=[.66, .34]):
                 a[size // 2:, :size // 2] += np.rot90(np.diag(dig, k=i))
                 a[size // 2:, :size // 2] -= np.rot90(np.diag(dig, k=-i))
-            else:
-                print('wow')
-
             a[:size // 2, size // 2:] += np.rot90(np.diag(dig, k=i))
             a[:size // 2, size // 2:] -= np.rot90(np.diag(dig, k=-i))
 

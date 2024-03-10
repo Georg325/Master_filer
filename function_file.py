@@ -130,22 +130,24 @@ class MovieDataHandler:
     def line_start(self):
         rows, cols = self.mat_size
         pos_size = rows - self.size[0], cols - self.size[1]
+        val_pos_size = rows - self.val_size[0], cols - self.val_size[1]
         possible_line_pos = np.arange(pos_size[0]), np.arange(pos_size[1])
+        val_possible_line_pos = np.arange(val_pos_size[0]), np.arange(val_pos_size[1])
 
         if self.subset and self.val:
-            val_pos_size = rows - self.val_size[0], cols - self.val_size[1]
+
             np.random.shuffle(possible_line_pos[0])
             np.random.shuffle(possible_line_pos[1])
 
             self.possible_pos = (possible_line_pos[0][pos_size[0] // 2:],
-                              possible_line_pos[1][pos_size[1] // 2:])
+                                 possible_line_pos[1][pos_size[1] // 2:])
 
-            self.val_possible_pos = (possible_line_pos[0][:val_pos_size[0] // 2],
-                                  possible_line_pos[1][:val_pos_size[1] // 2])
+            self.val_possible_pos = (val_possible_line_pos[0][:val_pos_size[0] // 2],
+                                     val_possible_line_pos[1][:val_pos_size[1] // 2])
 
         else:
-            self.possible_pos = (possible_line_pos[0],
-                                 possible_line_pos[1])
+            self.possible_pos = (possible_line_pos[0], possible_line_pos[1])
+            self.val_possible_pos = val_possible_line_pos
 
     def plot_matrices(self, model, num_to_pred, interval=500, val=False):
         input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred, val)
@@ -390,7 +392,6 @@ class MovieDataHandler:
         val_other = []
 
         list_of_metrics = [key for key in list(history_dict.keys())]
-        print(list_of_metrics)
 
         for metric in list_of_metrics:
             if 'val_IoU' in metric:
@@ -430,7 +431,6 @@ class MovieDataHandler:
                 nr_plots += 1
 
         plt_nr = 0
-        done = False
 
         if self.val:
             fig, ax = plt.subplots(2, nr_plots // 2, figsize=(2 * nr_plots, 8))
@@ -555,7 +555,7 @@ def matrix_maker(mat_size, kernel, possible_pos, line_size=(1, 2), num_per_mat=3
     smooth_matrix = sp.ndimage.convolve(np.random.rand(rows, cols), kernel)
 
     # line_start
-    line_start_position = np.random.choice(possible_pos[0]),  np.random.choice(possible_pos[1])
+    line_start_position = np.random.choice(possible_pos[0]), np.random.choice(possible_pos[1])
     # alfa
     alfa = np.linspace(1, 0, num=num_per_mat)
 
@@ -765,6 +765,7 @@ def train_multiple(matrix_params, model_types, train_param, val_params, run=Fals
                 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=False, early_stopping=False)
 
                 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
+                print('Training model: ', model_type)
                 start = time.time()
                 hist = model.fit(generator, validation_data=val_gen, epochs=epochs)
                 train_time = time.time() - start
@@ -794,20 +795,19 @@ if __name__ == '__main__':
         'subset': False,
     }
 
-    val__param = [{'val_size': [(3, 4), (3, 4)], 'subset': True}, ]
-    # {'rotate': False, 'val_size': [(2, 6), (2, 6)], 'val_rotate': False}]
+    val__param = [{'rotate': False, 'val_size': (2, 6), 'val_rotate': False}]  # {'val_size': (3, 4), 'subset': True},
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
-    model__types = ['rnn', 'cnn-rnn', ]  # ['cnn-res', 'cnn-brain', 'res', 'brain']#,
+    model__types = ['cnn-lstm', ]
 
     train__param = [
         500,  # batch_size =
-        10,  # batch_num =
+        20,  # batch_num =
         50,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='test')
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='master2')
     # combine_csv_files()

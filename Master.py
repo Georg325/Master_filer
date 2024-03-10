@@ -10,7 +10,7 @@ matrix_params = {
     'new_background': True,
     'shape': 'line',  # 'line', 'triangle', 'face'
 
-    'val': False,
+    'val': True,
 
     'val_strength_kernel': (1, 3),
     'val_size': (4, 3),
@@ -19,8 +19,13 @@ matrix_params = {
     'val_shape': 'line',  # 'line', 'triangle', 'face'
     'subset': True,
 }
-# dense, cnn-lstm, res, cnn-res, rnn, cnn-rnn, unet, unet-rnn, res-dense, brain, cnn-brain
-model_type = 'cnn-rnn'
+# dense,
+# cnn, cnn-lstm,
+# res, cnn-res, res-dense, deep-res
+# rnn, cnn-rnn,
+# unet, unet-rnn,
+# brain, cnn-brain,
+model_type = 'rnn'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
