@@ -733,14 +733,14 @@ if __name__ == '__main__':
         'subset': False,
     }
 
-    val__param = [{'val_size': (
-    3, 4)}]  # [{'rotate': False, 'val_size': (2, 6), 'val_rotate': False}]  # {'val_size': (3, 4), 'subset': True},
+    val__param = [{'val_size': (3, 4)}]
+    # [{'rotate': False, 'val_size': (2, 6), 'val_rotate': False}]  # {'val_size': (3, 4), 'subset': True},
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
-    model__types = ['cnn', 'cnn-rnn', ]
+    model__types = ['cnn-lstm']
 
     train__param = [
         500,  # batch_size =
@@ -748,5 +748,5 @@ if __name__ == '__main__':
         50,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='small_test')
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='big_test')
     # combine_csv_files()

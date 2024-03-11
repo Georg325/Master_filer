@@ -201,7 +201,9 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
 
             a[:size // 2, size // 2:] += np.rot90(np.diag(dig))
         else:
-            if np.random.choice([True, False], p=[.66, .34]):
+            if np.random.choice([True, False], p=[.666, .334]):
+                if show:
+                    print('wow')
                 a[size // 2:, :size // 2] += np.rot90(np.diag(dig, k=i))
                 a[size // 2:, :size // 2] -= np.rot90(np.diag(dig, k=-i))
             a[:size // 2, size // 2:] += np.rot90(np.diag(dig, k=i))
@@ -228,13 +230,14 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
     if show:
         plt.imshow(a, cmap='gray')
         plt.colorbar()
+        plt.axhline(y=49.5, color='white')
+        plt.axvline(x=49.5, color='white')
         plt.title('Example weights:')
         plt.show()
     return a
 
 
 if '__ma in__' == __name__:
-    make_rec_weights(100, show=True, shuffle=True, thickness=5).round(3)
     input_size = 16
     reservoir_size = 20
     output_size = 7

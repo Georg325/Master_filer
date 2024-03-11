@@ -68,7 +68,7 @@ def build_cnn_rnn(parameters):
 
     model.add(la.TimeDistributed(la.Flatten()))
     model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True))
-    model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True, recurrent_regularizer='l2'))
+    model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True))
 
     model.add(la.TimeDistributed(la.Dense(mat_size[0] * mat_size[1], activation='sigmoid')))
 

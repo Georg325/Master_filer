@@ -1,4 +1,3 @@
-
 from matplotlib import pyplot as plt
 import os
 import time
@@ -7,6 +6,8 @@ import numpy as np
 import scipy as sp
 import pandas as pd
 import random as rd
+
+from resoviarfuntion import make_rec_weights
 
 
 def make_kernel_plot():
@@ -64,7 +65,7 @@ def combine_csv_files(output_filename='combined_data', to_csv=True, excel=False)
                 new_background = components[5][-1] == 'T'
                 val_rotate = components[6][-1] == 'T'
                 val_new_background = components[7][-1] == 'T'
-                subset = components[8][-1] == 'T'
+                subset = components[8][-5] == 'T'
             else:
                 rotate = components[3][-1] == 'T'
                 new_background = components[4][-1] == 'T'
@@ -96,34 +97,50 @@ def combine_csv_files(output_filename='combined_data', to_csv=True, excel=False)
         combined_data.to_excel(output_filename + '.xlsx', index=False)
 
 
-def plot_iou_comparison():
+def plot_comparison(data_path, metrics):
+    num_epoch = 50
     # Load CSV file into a DataFrame
-    data = pd.read_csv('combined_data.csv')
+    data = pd.read_csv(data_path)
+    print(data.columns)
 
-    # Filter data for entries with 50 epochs
-    filtered_data = data[data['Epochs'] == 50]
+    # Filter data for entries with 100 epochs, Rotate is True, and Subset is False
+    filtered_data = data[(data['Epochs'] == num_epoch) & (data['Rotate'] == True) & (data['Subset'] == False)]
+    filtered_data['Train_time'] = filtered_data['Train_time'] / 60 / 60  # Convert Train_time to hours
 
     # Extract relevant columns for plotting
     model_names = filtered_data['Name']
-    iou5_scores = filtered_data['IoU5']
-    val_iou5_scores = filtered_data['val_IoU5']
 
     # Plot the data
-    plt.scatter(iou5_scores, val_iou5_scores, marker='o', color='b')
-    plt.title('IoU5 vs val_IoU5 Comparison at 50 Epochs')
-    plt.xlabel('IoU5')
-    plt.ylabel('val_IoU5')
+    fig, ax = plt.subplots()
 
-    # Annotate each point with the corresponding model name
-    for i, model_name in enumerate(model_names):
-        plt.annotate(model_name, (iou5_scores.iloc[i], val_iou5_scores.iloc[i]))
+    num_metrics = len(metrics)
+    bar_width = 0.2
+
+    # Set positions for the bars
+    bar_positions = [range(len(model_names))]
+    for i in range(1, num_metrics):
+        bar_positions.append([pos + i * bar_width for pos in bar_positions[0]])
+
+    # Iterate over metrics and plot bars
+    for i, metric in enumerate(metrics):
+        ax.bar(bar_positions[i], filtered_data[metric], width=bar_width, label=metric)
+
+    # Set labels and title
+    ax.set_xlabel('Name')
+    ax.set_ylabel('Metrics')
+    ax.set_title(f'Comparison of Metrics at {str(num_epoch)} Epochs')
+    ax.set_xticks([pos + (num_metrics - 1) * bar_width / 2 for pos in bar_positions[0]])
+    ax.set_xticklabels(model_names)
+    ax.legend()
 
     plt.grid(True)
     plt.show()
 
 
-df = pd.read_csv('combined_data.csv')
-plot_iou_comparison()
+# Example usage:
+make_rec_weights(100, 7, False, True)
 
-if __name__ == '__ma in__':
+if __name__ == '__m ain__':
     combine_csv_files()
+    metrics_to_compare = ['IoU5', 'val_IoU5', 'IoU9', 'val_IoU9']
+    plot_comparison('combined_data.csv', metrics_to_compare)
