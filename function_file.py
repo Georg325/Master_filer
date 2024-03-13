@@ -552,8 +552,6 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.file_name = f'weights/{name_note}'
-            self.save_model(model, epochs=epochs)
             self.plot_training_history(hist, plot, name_note, end_name, train_time=train_time, epoch=epochs)
 
 
