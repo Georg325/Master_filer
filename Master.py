@@ -1,4 +1,5 @@
 from function_file import *
+from master_prints import train_time_print
 #%%
 matrix_params = {
     'mat_size': (10, 10),
@@ -17,24 +18,24 @@ matrix_params = {
     'val_rotate': True,
     'val_new_background': True,
     'val_shape': 'line',  # 'line', 'triangle', 'face'
-    'subset': True,
+    'subset': False,
 }
 # dense,
 # cnn, cnn-lstm,
-# res, cnn-res, res-dense, deep-res
+# res, cnn-res, deep-res
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = 'rnn'
+model_type = 'dense'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 
-data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
+data_handler.load_model(model, 'best')  # auto, line, triangle, none, custom
 
 #%%
-batch_size = 500
+batch_size = 50
 batch_num = 10
 epochs = 50
 
@@ -42,11 +43,11 @@ generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
 start = time.time()
 hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
-print(f'Training tok {time.time() - start:.2f} s')
+train_time_print(start)
 
 #%%
 data_handler.save_model(model, 'none', epochs)  # auto, line, triangle, none, custom
 
 #%%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=True,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
                                     plot=True)

@@ -50,10 +50,10 @@ class MovieDataHandler:
 
         self.file_name = 'weights'
         self.file_path = self.file_name + '/'
-        start_name = f'{self.mat_size}{self.model_type}'
+        self.start_name = f'{self.mat_size}{self.model_type}'
         self.end_name = '.weights.h5'
-        self.triangle_path = self.file_path + start_name + 'triangle' + self.end_name
-        self.line_path = self.file_path + start_name + 'line' + self.end_name
+        self.triangle_path = self.file_path + self.start_name + 'triangle' + self.end_name
+        self.line_path = self.file_path + self.start_name + 'line' + self.end_name
 
     @classmethod
     def from_dict(cls, params):
@@ -106,12 +106,13 @@ class MovieDataHandler:
 
             elif shape == 'line':
                 if rotate:  # makes the line
-                    line_size = rotater(size)
+                    line_size, possible__pos = rotater([size, possible_pos])
 
                 else:  # does not rotate the line
                     line_size = size
+                    possible__pos = possible_pos
 
-                sfb = matrix_maker(self.mat_size, kernel, possible_pos, line_size,
+                sfb = matrix_maker(self.mat_size, kernel, possible__pos, line_size,
                                    self.fades_per_mat,
                                    new_background=new_background)
 
@@ -129,8 +130,8 @@ class MovieDataHandler:
 
     def line_start(self):
         rows, cols = self.mat_size
-        pos_size = rows - self.size[0], cols - self.size[1]
-        val_pos_size = rows - self.val_size[0], cols - self.val_size[1]
+        pos_size = rows - self.size[0] + 1, cols - self.size[1] + 1
+        val_pos_size = rows - self.val_size[0] + 1, cols - self.val_size[1] + 1
         possible_line_pos = np.arange(pos_size[0]), np.arange(pos_size[1])
         val_possible_line_pos = np.arange(val_pos_size[0]), np.arange(val_pos_size[1])
 
@@ -326,9 +327,9 @@ class MovieDataHandler:
             model.load_weights(self.line_path)
             print('Loaded line weights')
         else:
-            if os.path.exists(f'{weights_shape}' + self.end_name):
+            if os.path.exists(f'{self.file_path}{weights_shape}' + self.end_name):
                 try:
-                    model.load_weights(f'{weights_shape}' + self.end_name)
+                    model.load_weights(f'{self.file_path}{weights_shape}' + self.end_name)
                     print(f'Loaded {weights_shape}' + self.end_name)
                 except ValueError:
                     print('Could not load custom weights')
@@ -336,6 +337,8 @@ class MovieDataHandler:
                 print(f'Did not find weights with name {weights_shape}' + self.end_name)
 
     def save_model(self, model, weights_shape='auto', epochs=0):
+        self.triangle_path = self.file_path + self.start_name + 'triangle' + self.end_name
+        self.line_path = self.file_path + self.start_name + 'line' + self.end_name
         if epochs == 0 or weights_shape == 'none':
             return
         elif weights_shape == 'auto':
@@ -367,7 +370,7 @@ class MovieDataHandler:
             model.save_weights(f'{self.file_path}{weights_shape}' + self.end_name)
             print(f'Saved custom weights with name {weights_shape}' + self.end_name)
 
-    def plot_training_history(self, training_history_object, show, name_note, end_name, train_time=None):
+    def plot_training_history(self, training_history_object, show, name_note, end_name, train_time=None, epoch=0):
         """
         Input:
             training_history_object:: Object returned by model.fit() function in keras
@@ -404,16 +407,18 @@ class MovieDataHandler:
 
         train_hist_df = pd.DataFrame(history_dict)
 
-        make_folder('csv_files')
+        file_space = f'csv_files/{name_note}'
+
+        make_folder(file_space)
 
         if train_time is None:
             train_hist_df.tail(1).round(4).to_csv(
-                f'csv_files/{self.model_type}' + end_name + '.csv')
+                f'{file_space}/{self.model_type}' + end_name + '.csv')
         else:
 
             trn = train_hist_df.tail(1)
             trn.insert(1, 'Train_time', train_time)
-            trn.round(4).to_csv(f'csv_files/{self.model_type}' + end_name + '.csv')
+            trn.round(4).to_csv(f'{file_space}/{self.model_type}' + end_name + '.csv')
 
         train_keys = other
         nr_plots = len(other)
@@ -435,6 +440,7 @@ class MovieDataHandler:
                 ax[0, plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
                 ax[0, plt_nr].set_ylim(0, 1)
                 ax[0, plt_nr].set_xlabel('Epoch')
+                ax[0, plt_nr].set_xlim(0, epoch)
                 ax[0, plt_nr].set_title(train_keys[plt_nr])
                 ax[0, plt_nr].grid('on')
                 ax[0, plt_nr].legend()
@@ -444,6 +450,7 @@ class MovieDataHandler:
                 ax[0, plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
                 ax[0, plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
                 ax[0, plt_nr].set_ylim(0, 1)
+                ax[0, plt_nr].set_xlim(0, epoch)
                 ax[0, plt_nr].set_xlabel('Epoch')
                 ax[0, plt_nr].set_title('Precision and Recall')
                 ax[0, plt_nr].grid('on')
@@ -453,6 +460,7 @@ class MovieDataHandler:
             for k in range(len(iou_s)):
                 ax[1, plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
                 ax[1, plt_nr].set_ylim(0, 1)
+                ax[1, plt_nr].set_xlim(0, epoch)
                 ax[1, plt_nr].set_xlabel('Epoch')
                 ax[1, plt_nr].set_title('IoU')
                 ax[1, plt_nr].grid('on')
@@ -461,6 +469,7 @@ class MovieDataHandler:
             for k in range(len(iou_s)):
                 ax[1, plt_nr].plot(np.array(train_hist_df[val_iou_s[k]]), label=f'Frame {k + 1}')
                 ax[1, plt_nr].set_ylim(0, 1)
+                ax[1, plt_nr].set_xlim(0, epoch)
                 ax[1, plt_nr].set_xlabel('Epoch')
                 ax[1, plt_nr].set_title('val_IoU')
                 ax[1, plt_nr].grid('on')
@@ -474,6 +483,7 @@ class MovieDataHandler:
                 if self.val:
                     ax[plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
                 ax[plt_nr].set_ylim(0, 1)
+                ax[plt_nr].set_xlim(0, epoch)
                 ax[plt_nr].set_xlabel('Epoch')
                 ax[plt_nr].set_title(train_keys[plt_nr])
                 ax[plt_nr].grid('on')
@@ -485,6 +495,7 @@ class MovieDataHandler:
                 if self.val:
                     ax[plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
                 ax[plt_nr].set_ylim(0, 1)
+                ax[plt_nr].set_xlim(0, epoch)
                 ax[plt_nr].set_xlabel('Epoch')
                 ax[plt_nr].set_title('Precision and Recall')
                 ax[plt_nr].grid('on')
@@ -494,6 +505,7 @@ class MovieDataHandler:
             for k in range(len(iou_s)):
                 ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
                 ax[plt_nr].set_ylim(0, 1)
+                ax[plt_nr].set_xlim(0, epoch)
                 ax[plt_nr].set_xlabel('Epoch')
                 ax[plt_nr].set_title('IoU')
                 ax[plt_nr].grid('on')
@@ -540,7 +552,9 @@ class MovieDataHandler:
                 self.ani = self.plot_matrices(model, num_to_pred=movies_to_show, interval=interval, val=with_val)
 
         if hist is not None and epochs != 0:
-            self.plot_training_history(hist, plot, name_note, end_name, train_time=train_time)
+            self.file_name = f'weights/{name_note}'
+            self.save_model(model, epochs=epochs)
+            self.plot_training_history(hist, plot, name_note, end_name, train_time=train_time, epoch=epochs)
 
 
 def matrix_maker(mat_size, kernel, possible_pos, line_size=(1, 2), num_per_mat=3, new_background=False):
@@ -642,10 +656,13 @@ def matrix_triangle_maker(mat_size, kernel, num_per_mat=3, new_background=False,
     return tf.convert_to_tensor(matrix_line_fade), tf.convert_to_tensor(line_pos_mat), tf.convert_to_tensor(alfa)
 
 
-def rotater(line):
-    if rng.randint(0, 1):
-        return line[::-1]
-    return line
+def rotater(line_lis):
+    if np.random.choice([True, False]):
+        hui = []
+        for line in line_lis:
+            hui.append(line[::-1])
+        return hui
+    return line_lis
 
 
 def set_kernel(str_ker):
@@ -662,9 +679,18 @@ def set_kernel(str_ker):
     return kernel / np.sum(kernel)
 
 
-def make_folder(folder_name):
-    if not os.path.exists(folder_name):
-        os.mkdir(folder_name)
+def make_folder(*folder_names):
+    for folder_name in folder_names:
+        if '/' in folder_name:
+            folders = folder_name.split('/')
+            current_path = ''
+            for folder in folders:
+                current_path = os.path.join(current_path, folder)
+                if not os.path.exists(current_path):
+                    os.mkdir(current_path)
+        else:
+            if not os.path.exists(folder_name):
+                os.mkdir(folder_name)
 
 
 def plots(matrix, interval=200):
@@ -690,7 +716,11 @@ def full_triangle(a, b, c):
         yield from rg.bresenham_line(c, x, endpoint=True)
 
 
-def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note='test'):
+def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note=None):
+    if name_note is None:
+        name_note = ['test' for _ in range(len(val_params))]
+    elif len(name_note) != len(val_params):
+        name_note += ['test' for _ in range(len(val_params) - len(name_note))]
     if run:
         batch_size, batch_num, epochs = train_param
 
@@ -709,7 +739,7 @@ def train_multiple(matrix_params, model_types, train_param, val_params, run=Fals
                 train_time = time.time() - start
 
                 data_handler.after_training_metrics(model, hist=hist, epochs=epochs,
-                                                    plot=False, name_note=name_note, train_time=train_time)
+                                                    plot=False, name_note=name_note[f], train_time=train_time)
 
 
 if __name__ == '__main__':
@@ -732,21 +762,23 @@ if __name__ == '__main__':
         'val_shape': 'line',  # 'line', 'triangle', 'face'
         'subset': False,
     }
-
-    val__param = [{'val_size': (3, 4)}]
-    # [{'rotate': False, 'val_size': (2, 6), 'val_rotate': False}]  # {'val_size': (3, 4), 'subset': True},
+    normal_val = [{'val_size': (3, 4)},
+                  {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
+    val__param = [{'val_size': (3, 4)},
+                  {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
-    model__types = ['cnn-lstm']
+    normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
+    model__types = ['dense', 'res']
 
     train__param = [
         500,  # batch_size =
-        20,  # batch_num =
-        50,  # epochs =
+        10,  # batch_num =
+        10,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note='big_test')
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['box', 'non_rot'])
     # combine_csv_files()

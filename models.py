@@ -27,15 +27,17 @@ def build_model(model_type, parameters):
         return build_cnn_res(parameters)
     elif model_type == 'unet-rnn':
         return build_unet_rnn(parameters)
-    elif model_type == 'res-dense':
-        return build_res_dense(parameters)
     elif model_type == 'deep-res':
         return build_deep_res(parameters)
     elif model_type == 'brain':
         return build_brain(parameters)
     elif model_type == 'cnn-brain':
         return build_cnn_brain(parameters)
-    breakpoint('error')
+    model_type = input('Enter model:')
+    if model_type == '':
+        breakpoint('error')
+    else:
+        return build_model(model_type, parameters)
 
 
 def build_cnn(parameters):
@@ -63,7 +65,7 @@ def build_cnn_rnn(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base * 2, kernel_size=(2, 2), padding='same', activation='tanh')))
+    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), padding='same', activation='tanh')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
 
     model.add(la.TimeDistributed(la.Flatten()))
@@ -87,27 +89,11 @@ def build_cnn_lstm(parameters):
     model.add(la.TimeDistributed(la.Conv2D(filter_, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.Conv2D(filter_ * 2, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.ConvLSTM2D(filter_ * 2, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
-    model.add(la.ConvLSTM2D(filter_ * 4, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
+    model.add(la.ConvLSTM2D(filter_ * 2, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
     model.add(la.ConvLSTM2D(1, kernel_size=(2, 2), padding='same', activation='tanh', return_sequences=True))
 
     # la.Reshape to the desired output shape
     model.add(la.Reshape((pic_per_mat, mat_size[0], mat_size[1], 1)))
-    return model
-
-
-def build_res_dense(parameters):
-    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
-    model = m.Sequential()
-
-    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(ReservoirLayer(500))
-    model.add(la.TimeDistributed(la.Dense(500, activation='tanh')))
-    model.add(ReservoirLayer(500))
-    model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
-
-    # Reshape to the desired output shape
-    model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
 
@@ -117,7 +103,7 @@ def build_deep_res(parameters):
     inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
     x = [la.Reshape((pic_per_mat, np.prod(mat_size)))(inputs)]
 
-    for _ in range(3):
+    for _ in range(2):
         x.append(ReservoirLayer(250)(x[-1]))
     con = la.concatenate(x[1:])
     den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
@@ -135,7 +121,6 @@ def Dense(parameters):
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
     model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
-    model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='sigmoid')))
 
     # Reshape to the desired output shape
@@ -149,7 +134,7 @@ def build_res(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(ReservoirLayer(700))
+    model.add(ReservoirLayer(400))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
@@ -166,7 +151,7 @@ def build_cnn_res(parameters):
     model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//4)))
-    model.add(ReservoirLayer(550))
+    model.add(ReservoirLayer(330))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
@@ -183,7 +168,7 @@ def build_cnn_brain(parameters):
     model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//4)))
-    model.add(BrainLayer(550, make_weights=True, half_input=True, half_output=True))
+    model.add(BrainLayer(330, make_weights=True, half_input=True, half_output=True))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
     # Reshape to the desired output shape
     model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
@@ -197,7 +182,7 @@ def build_rnn(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.TimeDistributed(la.Flatten()))
-    model.add(la.LSTM(200, activation='tanh', return_sequences=True))
+    model.add(la.LSTM(110, activation='tanh', return_sequences=True))
     model.add(la.LSTM(150, activation='tanh', return_sequences=True))
 
     model.add(la.TimeDistributed(la.Dense(mat_size[0] * mat_size[1], activation='sigmoid')))
@@ -279,9 +264,10 @@ def build_brain(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(BrainLayer(700, make_weights=True, half_input=True, half_output=True))
+    model.add(BrainLayer(450, make_weights=True, half_input=True, half_output=True))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape
     model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
+

@@ -8,6 +8,8 @@ import pandas as pd
 import random as rd
 
 from resoviarfuntion import make_rec_weights
+from function_file import MovieDataHandler, make_folder
+from function_file import rotater
 
 
 def make_kernel_plot():
@@ -137,10 +139,22 @@ def plot_comparison(data_path, metrics):
     plt.show()
 
 
-# Example usage:
-make_rec_weights(100, 7, False, True)
+def train_time_print(time_start):
+    time_end = time.time() - time_start
+
+    hours, remainder = divmod(int(time_end), 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if hours > 0:
+        print(f"Training time: {hours} hours, {minutes} minutes, and {seconds} seconds")
+    elif minutes > 0:
+        print(f"Training time: {minutes} minutes and {seconds} seconds")
+    else:
+        print(f"Training time: {seconds} seconds")
+
 
 if __name__ == '__m ain__':
+    make_rec_weights(100, 7, False, True)
     combine_csv_files()
     metrics_to_compare = ['IoU5', 'val_IoU5', 'IoU9', 'val_IoU9']
     plot_comparison('combined_data.csv', metrics_to_compare)

@@ -130,7 +130,7 @@ class BrainLayer(tf.keras.layers.Layer):
             dig = np.diag(np.ones((self.reservoir_size // 2)))
             self.out_cor = np.concatenate((out_cor, dig), axis=1, dtype=np.float32)
         else:
-            self.out_cor = np.eye(self.reservoir_size)
+            self.out_cor = np.eye(self.reservoir_size, dtype=np.float32)
 
         if self.half_input:
             self.in_cor = np.diag(np.concatenate(
@@ -138,7 +138,7 @@ class BrainLayer(tf.keras.layers.Layer):
                  np.zeros(self.reservoir_size // 2)),
                 axis=0, dtype=np.float32))
         else:
-            self.in_cor = np.eye(self.reservoir_size)
+            self.in_cor = np.eye(self.reservoir_size, dtype=np.float32)
 
         super(BrainLayer, self).build(input_shape)
 
