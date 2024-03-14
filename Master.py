@@ -1,6 +1,8 @@
 from function_file import *
 from master_prints import train_time_print
-#%%
+import matplotlib.pyplot as plt
+
+# %%
 matrix_params = {
     'mat_size': (10, 10),
     'fades_per_mat': 10,
@@ -29,15 +31,15 @@ matrix_params = {
 model_type = 'cnn-rnn'
 
 data_handler = MovieDataHandler(**matrix_params)
-#%%
+# %%
 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 
-data_handler.load_model(model, 'cnn-rnn')  # auto, line, triangle, none, custom
+data_handler.load_model(model, 'none')  # auto, line, triangle, none, custom
 
-#%%
+# %%
 batch_size = 500
 batch_num = 10
-epochs = 0
+epochs = 40
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -45,9 +47,15 @@ start = time.time()
 hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
 train_time_print(start)
 
-#%%
-data_handler.save_model(model, 'cnn-rnn', epochs)  # auto, line, triangle, none, custom
+wihseat = model.get_layer('time_distributed').get_weights()[0]
 
-#%%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=1, movies_to_show=0, both=False,
+wihseat = np.transpose(np.array(wihseat), [2, 3, 0, 1])
+plots(wihseat[0], interval=500)
+
+
+# %%
+data_handler.save_model(model, model_type, epochs)  # auto, line, triangle, none, custom
+
+# %%
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
                                     plot=True)

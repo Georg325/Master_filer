@@ -772,9 +772,9 @@ if __name__ == '__main__':
     model__types = ['cnn', 'res', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
 
     train__param = [
-        250,  # batch_size =
-        10,  # batch_num =
-        5,  # epochs =
+        500,  # batch_size =
+        20,  # batch_num =
+        100,  # epochs =
     ]
 
     train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['short-box', 'short-rot'])
