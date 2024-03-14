@@ -769,7 +769,7 @@ if __name__ == '__main__':
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
     normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['cnn', 'res', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
+    model__types = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
 
     train__param = [
         500,  # batch_size =
@@ -777,5 +777,5 @@ if __name__ == '__main__':
         100,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['short-box', 'short-rot'])
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['l-box', 'l-rot'])
     # combine_csv_files()
