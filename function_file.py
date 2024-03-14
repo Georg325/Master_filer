@@ -237,6 +237,7 @@ class MovieDataHandler:
             title += f'{self.model_type} model'
 
             fig.suptitle(title)
+        plt.show()
 
     def unique_lines(self):
         unique_lines = 0
@@ -337,8 +338,6 @@ class MovieDataHandler:
                 print(f'Did not find weights with name {weights_shape}' + self.end_name)
 
     def save_model(self, model, weights_shape='auto', epochs=0):
-        self.triangle_path = self.file_path + self.start_name + 'triangle' + self.end_name
-        self.line_path = self.file_path + self.start_name + 'line' + self.end_name
         if epochs == 0 or weights_shape == 'none':
             return
         elif weights_shape == 'auto':
@@ -770,13 +769,13 @@ if __name__ == '__main__':
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
     normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['dense', 'res']
+    model__types = ['cnn', 'res', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
 
     train__param = [
-        500,  # batch_size =
+        250,  # batch_size =
         10,  # batch_num =
-        10,  # epochs =
+        5,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['box', 'non_rot'])
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['short-box', 'short-rot'])
     # combine_csv_files()

@@ -5,11 +5,6 @@ import time
 import numpy as np
 import scipy as sp
 import pandas as pd
-import random as rd
-
-from resoviarfuntion import make_rec_weights
-from function_file import MovieDataHandler, make_folder
-from function_file import rotater
 
 
 def make_kernel_plot():
@@ -42,8 +37,8 @@ def make_kernel_plot():
     plt.show()
 
 
-def combine_csv_files(output_filename='combined_data', to_csv=True, excel=False):
-    folder_path = 'csv_files/'
+def combine_csv_files(sub_folder, output_filename='combined_data', to_csv=True, excel=False):
+    folder_path = f'csv_files/{sub_folder}'
     # Initialize an empty DataFrame to store the combined data
     combined_data = pd.DataFrame()
 
@@ -99,15 +94,15 @@ def combine_csv_files(output_filename='combined_data', to_csv=True, excel=False)
         combined_data.to_excel(output_filename + '.xlsx', index=False)
 
 
-def plot_comparison(data_path, metrics):
-    num_epoch = 50
+def plot_comparison(data_path, metrics, epochs):
+    num_epoch = epochs
     # Load CSV file into a DataFrame
     data = pd.read_csv(data_path)
     print(data.columns)
 
-    # Filter data for entries with 100 epochs, Rotate is True, and Subset is False
+    # Filter data for entries with 10 epochs, Rotate is True, and Subset is False
     filtered_data = data[(data['Epochs'] == num_epoch) & (data['Rotate'] == True) & (data['Subset'] == False)]
-    filtered_data['Train_time'] = filtered_data['Train_time'] / 60 / 60  # Convert Train_time to hours
+    filtered_data['Train_time'] = filtered_data['Train_time'] / 60  # / 60  # Convert Train_time to hours
 
     # Extract relevant columns for plotting
     model_names = filtered_data['Name']
@@ -153,8 +148,8 @@ def train_time_print(time_start):
         print(f"Training time: {seconds} seconds")
 
 
-if __name__ == '__m ain__':
-    make_rec_weights(100, 7, False, True)
-    combine_csv_files()
-    metrics_to_compare = ['IoU5', 'val_IoU5', 'IoU9', 'val_IoU9']
-    plot_comparison('combined_data.csv', metrics_to_compare)
+if __name__ == '__main__':
+    # make_rec_weights(100, 7, False, True)
+    combine_csv_files('short-box')
+    metrics_to_compare = ['loss','IoU9', 'Train_time']
+    plot_comparison('combined_data.csv', metrics_to_compare, 5)

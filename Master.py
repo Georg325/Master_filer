@@ -26,18 +26,18 @@ matrix_params = {
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = 'dense'
+model_type = 'cnn-rnn'
 
 data_handler = MovieDataHandler(**matrix_params)
 #%%
 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 
-data_handler.load_model(model, 'best')  # auto, line, triangle, none, custom
+data_handler.load_model(model, 'cnn-rnn')  # auto, line, triangle, none, custom
 
 #%%
-batch_size = 50
+batch_size = 500
 batch_num = 10
-epochs = 50
+epochs = 0
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -46,8 +46,8 @@ hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=ca
 train_time_print(start)
 
 #%%
-data_handler.save_model(model, 'none', epochs)  # auto, line, triangle, none, custom
+data_handler.save_model(model, 'cnn-rnn', epochs)  # auto, line, triangle, none, custom
 
 #%%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=1, movies_to_show=0, both=False,
                                     plot=True)
