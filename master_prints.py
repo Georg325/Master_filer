@@ -148,7 +148,7 @@ def train_time_print(time_start):
         print(f"Training time: {seconds} seconds")
 
 
-make_kernel_plot()
+# make_kernel_plot()
 
 if __name__ == '__ma in__':
     # make_rec_weights(100, 7, False, True)

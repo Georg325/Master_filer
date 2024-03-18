@@ -86,7 +86,7 @@ def build_cnn_lstm(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
 
-    model.add(la.TimeDistributed(la.Conv2D(filter_, kernel_size=(3, 3), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(filter_, kernel_size=(5, 5), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.Conv2D(filter_ * 2, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.ConvLSTM2D(filter_ * 2, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
     model.add(la.ConvLSTM2D(filter_ * 2, kernel_size=(2, 2), padding='same', activation='relu', return_sequences=True))
@@ -148,10 +148,11 @@ def build_cnn_res(parameters):
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(2, 2), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(5, 5), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(cnn_filter*2, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
-    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//4)))
-    model.add(ReservoirLayer(330))
+    model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//2)))
+    model.add(ReservoirLayer(250))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh')))
 
     # Reshape to the desired output shape

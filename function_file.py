@@ -670,7 +670,7 @@ def set_kernel(str_ker):
         lambda x, y: np.exp(
             -((x - center) ** 2 +
               (y - center) ** 2)
-            / (2 * strength ** 2)),
+            / strength),
         (kernel_size, kernel_size))
 
     return kernel / np.sum(kernel)
@@ -744,7 +744,7 @@ if __name__ == '__main__':
         'mat_size': (10, 10),
         'fades_per_mat': 10,
 
-        'strength_kernel': (1, 3),
+        'strength_kernel': (2, 3),
         'size': (6, 2),
         'rotate': True,
         'new_background': True,
@@ -752,7 +752,7 @@ if __name__ == '__main__':
 
         'val': True,
 
-        'val_strength_kernel': (1, 3),
+        'val_strength_kernel': (2, 3),
         'val_size': (6, 2),
         'val_rotate': True,
         'val_new_background': True,
@@ -761,15 +761,15 @@ if __name__ == '__main__':
     }
     normal_val = [{'val_size': (3, 4)},
                   {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
-    val__param = [{'val_size': (3, 4)},
-                  {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
+    val__param = [ {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}
+                  ]
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
     normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
+    model__types = ['cnn-lstm']
 
     train__param = [
         500,  # batch_size =
@@ -777,5 +777,5 @@ if __name__ == '__main__':
         100,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['l-box', 'l-rot'])
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['res-line'])
     # combine_csv_files()
