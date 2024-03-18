@@ -18,7 +18,10 @@ class DataGenerator(ks.utils.Sequence, ABC):
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        return self.num_batch
+        if self.val:
+            return 1
+        else:
+            return self.num_batch
 
     def __getitem__(self, index):
         """Generate one batch of data"""

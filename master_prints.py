@@ -9,7 +9,7 @@ import pandas as pd
 
 def make_kernel_plot():
     from function_file import set_kernel
-    kernel = set_kernel((1, 3))
+    kernel = set_kernel((2, 3))
 
     # Create a meshgrid for x, y coordinates
     x = np.arange(kernel.shape[0])
@@ -148,7 +148,9 @@ def train_time_print(time_start):
         print(f"Training time: {seconds} seconds")
 
 
-if __name__ == '__main__':
+make_kernel_plot()
+
+if __name__ == '__ma in__':
     # make_rec_weights(100, 7, False, True)
     combine_csv_files('short-box')
     metrics_to_compare = ['loss','IoU9', 'Train_time']
