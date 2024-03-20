@@ -94,15 +94,15 @@ def combine_csv_files(sub_folder, output_filename='combined_data', to_csv=True, 
         combined_data.to_excel(output_filename + '.xlsx', index=False)
 
 
-def plot_comparison(data_path, metrics, epochs):
-    num_epoch = epochs
+def plot_comparison(metrics, data_path='combined_data.csv',):
+    num_epoch = 100
     # Load CSV file into a DataFrame
     data = pd.read_csv(data_path)
-    print(data.columns)
+    data.sort_values(by=['Train_time'], inplace=True, ascending=False)
 
     # Filter data for entries with 10 epochs, Rotate is True, and Subset is False
-    filtered_data = data[(data['Epochs'] == num_epoch) & (data['Rotate'] == True) & (data['Subset'] == False)]
-    filtered_data['Train_time'] = filtered_data['Train_time'] / 60  # / 60  # Convert Train_time to hours
+    filtered_data = data
+    filtered_data['Train_time'] = filtered_data['Train_time'] / 60 / 60  # Convert Train_time to hours
 
     # Extract relevant columns for plotting
     model_names = filtered_data['Name']
@@ -150,8 +150,10 @@ def train_time_print(time_start):
 
 # make_kernel_plot()
 
-if __name__ == '__ma in__':
+if __name__ == '__main__':
     # make_rec_weights(100, 7, False, True)
-    combine_csv_files('short-box')
-    metrics_to_compare = ['loss','IoU9', 'Train_time']
-    plot_comparison('combined_data.csv', metrics_to_compare, 5)
+    combine_csv_files('res-line')
+    metrics_to_compare = ['loss', 'val_loss', 'IoU9', 'val_IoU9', ]
+    plot_comparison(metrics_to_compare)
+    metrics_to_compare = ['precision', 'recall']
+

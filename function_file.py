@@ -769,7 +769,7 @@ if __name__ == '__main__':
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
     normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['cnn-lstm']
+    model__types = ['cnn-rnn']
 
     train__param = [
         500,  # batch_size =

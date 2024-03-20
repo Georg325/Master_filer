@@ -28,7 +28,7 @@ matrix_params = {
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = 'cnn'
+model_type = ('deep-res')
 
 data_handler = MovieDataHandler(**matrix_params)
 # %%
@@ -39,7 +39,7 @@ data_handler.load_model(model, model_type)  # auto, line, triangle, none, custom
 # %%
 batch_size = 500
 batch_num = 20
-epochs = 50
+epochs = 0
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -47,9 +47,7 @@ start = time.time()
 hist = model.fit(generator, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
 train_time_print(start)
 
-wihseat = model.get_layer('time_distributed').get_weights()[0]
-
-wihseat = np.transpose(np.array(wihseat), [2, 3, 0, 1])
+#wihseat = np.transpose(np.array(wihseat), [2, 3, 0, 1])
 # plots(wihseat[0], interval=500)
 
 
@@ -57,5 +55,5 @@ wihseat = np.transpose(np.array(wihseat), [2, 3, 0, 1])
 data_handler.save_model(model, model_type, epochs)  # auto, line, triangle, none, custom
 
 # %%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=3, movies_to_show=0, both=False,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
                                     plot=True)

@@ -31,7 +31,7 @@ def build_model(model_type, parameters):
         return build_deep_res(parameters)
     elif model_type == 'brain':
         return build_brain(parameters)
-    elif model_type == 'cnn-brain':
+    elif model_type == 'cnn-mod-res':
         return build_cnn_brain(parameters)
     model_type = input('Enter model:')
     if model_type == '':
