@@ -3,8 +3,10 @@ import os
 import time
 
 import numpy as np
-import scipy as sp
 import pandas as pd
+
+import tikzplotlib as tikz
+import re
 
 
 def make_kernel_plot():
@@ -48,7 +50,7 @@ def combine_csv_files(sub_folder, output_filename='combined_data', to_csv=True, 
             file_path = os.path.join(folder_path, filename)
 
             # Read the CSV file into a DataFrame
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(file_path).tail(1)
             # Add a new column with the folder name as an identifier
             components = filename.split('_')
 
@@ -94,7 +96,7 @@ def combine_csv_files(sub_folder, output_filename='combined_data', to_csv=True, 
         combined_data.to_excel(output_filename + '.xlsx', index=False)
 
 
-def plot_comparison(metrics, data_path='combined_data.csv',):
+def plot_comparison(metrics, data_path='combined_data.csv', ):
     num_epoch = 100
     # Load CSV file into a DataFrame
     data = pd.read_csv(data_path)
@@ -131,6 +133,7 @@ def plot_comparison(metrics, data_path='combined_data.csv',):
     ax.legend()
 
     plt.grid(True)
+    tikz.save("test.tex")
     plt.show()
 
 
@@ -148,12 +151,93 @@ def train_time_print(time_start):
         print(f"Training time: {seconds} seconds")
 
 
-# make_kernel_plot()
+def parse_plots(sub_folder):
+    folder_path = f'csv_files/{sub_folder}'
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.csv'):
+            file_path = f'{folder_path}/{filename}'
+            ind_plot(file_path)
 
-if __name__ == '__main__':
+
+def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv'):
+    df = pd.read_csv(filepath, index_col=0)
+    df.pop('Train_time')
+
+    epoch = int(re.search(r'_e(\d+)_', filepath).group(1))
+
+    list_of_metrics = df.columns
+
+    metric_groups = [[] for _ in range(6)]
+    for metric in list_of_metrics:
+        if 'val_' in metric:
+            if 'loss' in metric:
+                metric_groups[0].append(metric)
+            elif 'ec' in metric:
+                metric_groups[1].append(metric)
+            else:
+                metric_groups[2].append(metric)
+        else:
+            if 'loss' in metric:
+                metric_groups[3].append(metric)
+            elif 'ec' in metric:
+                metric_groups[4].append(metric)
+            else:
+                metric_groups[5].append(metric)
+
+    if len(metric_groups[0]) > 0:
+        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+        plot_metrics = ([metric_groups[0], metric_groups[3]], [metric_groups[1], metric_groups[4]], [metric_groups[5]],
+                        [metric_groups[2]])
+        titles = ['Loss', 'Precision and Recall', 'IoU', 'val_IoU']
+
+        for k, metric in enumerate(plot_metrics):
+            for i in range(len(metric[0])):
+
+                if len(metric) == 2:
+                    ax[k // 2, k % 2].plot(np.array(df[metric[0][i]]), label=metric[0][i])
+                    ax[k // 2, k % 2].plot(np.array(df[metric[-1][i]]), label=metric[-1][i])
+                else:
+                    ax[k // 2, k % 2].plot(np.array(df[metric[0][i]]), label=f'Step {i + 1}')
+
+                ax[k // 2, k % 2].set_ylim(0, 1)
+                ax[k // 2, k % 2].set_xlabel('Epoch')
+                ax[k // 2, k % 2].set_xlim(0, epoch)
+                ax[k // 2, k % 2].set_title(titles[k])
+                ax[k // 2, k % 2].grid('on')
+                if titles[k] != 'IoU':
+                    ax[k // 2, k % 2].legend()
+    else:
+        fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+        plot_metrics = (metric_groups[3], metric_groups[4], metric_groups[5])
+        titles = ['Loss', 'Precision and Recall', 'IoU']
+
+        for k, metric in enumerate(plot_metrics):
+            for i in range(len(metric)):
+                if titles[k] == 'IoU':
+                    ax[k].plot(np.array(df[metric[i]]), label=f'Step {i + 1}')
+                else:
+                    ax[k].plot(np.array(df[metric[i]]), label=metric[i])
+                ax[k].set_ylim(0, 1)
+                ax[k].set_xlim(0, epoch)
+                ax[k].set_xlabel('Epoch')
+                ax[k].set_title(titles[k])
+                ax[k].grid('on')
+                ax[k].legend()
+    name_eat = filepath.split('/')[-1].split('_')[0]
+    rest = re.sub(name_eat+'_', '', filepath.split('/')[-1])
+    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + rest)
+    fig.tight_layout()
+    plt.savefig(filepath.split('/')[-1] + '.pdf')
+
+
+# make_kernel_plot()
+parse_plots('tul')
+
+# ind_plot('csv_files/tul/dense_e100_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv')
+
+if __name__ == '__mai n__':
     # make_rec_weights(100, 7, False, True)
     combine_csv_files('res-line')
     metrics_to_compare = ['loss', 'val_loss', 'IoU9', 'val_IoU9', ]
     plot_comparison(metrics_to_compare)
     metrics_to_compare = ['precision', 'recall']
-

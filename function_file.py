@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from models import build_model
 
+import tikzplotlib
+
 rng = rd.SystemRandom()
 
 
@@ -380,13 +382,7 @@ class MovieDataHandler:
         """
         history_dict = training_history_object.history
 
-        iou_s = []
-        preps = []
-        other = []
-
-        val_iou_s = []
-        val_preps = []
-        val_other = []
+        iou_s, preps, train_keys, val_iou_s, val_preps, val_train_keys = [[] for _ in range(6)]
 
         list_of_metrics = [key for key in list(history_dict.keys())]
 
@@ -396,31 +392,24 @@ class MovieDataHandler:
             elif 'val_precision' in metric or 'val_recall' in metric:
                 val_preps.append(metric)
             elif 'val_' in metric:
-                val_other.append(metric)
+                val_train_keys.append(metric)
             elif 'IoU' in metric:
                 iou_s.append(metric)
             elif 'precision' in metric or 'recall' in metric:
                 preps.append(metric)
             else:
-                other.append(metric)
+                train_keys.append(metric)
 
-        train_hist_df = pd.DataFrame(history_dict)
+        train_hist_df = pd.DataFrame(history_dict).round(4)
 
         file_space = f'csv_files/{name_note}'
-
         make_folder(file_space)
 
-        if train_time is None:
-            train_hist_df.tail(1).round(4).to_csv(
-                f'{file_space}/{self.model_type}' + end_name + '.csv')
-        else:
+        if train_time is not None:
+            train_hist_df.insert(1, 'Train_time', round(train_time, 4))
+        train_hist_df.to_csv(f'{file_space}/{self.model_type}' + end_name + '.csv')
 
-            trn = train_hist_df.tail(1)
-            trn.insert(1, 'Train_time', train_time)
-            trn.round(4).to_csv(f'{file_space}/{self.model_type}' + end_name + '.csv')
-
-        train_keys = other
-        nr_plots = len(other)
+        nr_plots = len(train_keys)
 
         if len(iou_s) > 0:
             nr_plots += 1
@@ -429,98 +418,55 @@ class MovieDataHandler:
             if self.val:
                 nr_plots += 1
 
-        plt_nr = 0
-
         if self.val:
             fig, ax = plt.subplots(2, nr_plots // 2, figsize=(2 * nr_plots, 8))
+            plot_metrics = ([train_keys, val_train_keys], [preps, val_preps], [iou_s], [val_iou_s])
+            titles = ['Loss', 'Precision and Recall', 'IoU', 'val_IoU']
 
-            for i in range(len(other)):
-                ax[0, plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
-                ax[0, plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
-                ax[0, plt_nr].set_ylim(0, 1)
-                ax[0, plt_nr].set_xlabel('Epoch')
-                ax[0, plt_nr].set_xlim(0, epoch)
-                ax[0, plt_nr].set_title(train_keys[plt_nr])
-                ax[0, plt_nr].grid('on')
-                ax[0, plt_nr].legend()
-            plt_nr += 1
+            for k, metric in enumerate(plot_metrics):
+                for i in range(len(metric[0])):
 
-            for k in range(len(preps)):
-                ax[0, plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
-                ax[0, plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
-                ax[0, plt_nr].set_ylim(0, 1)
-                ax[0, plt_nr].set_xlim(0, epoch)
-                ax[0, plt_nr].set_xlabel('Epoch')
-                ax[0, plt_nr].set_title('Precision and Recall')
-                ax[0, plt_nr].grid('on')
-                ax[0, plt_nr].legend()
+                    if len(metric) == 2:
+                        ax[k//2, k % 2].plot(np.array(train_hist_df[metric[0][i]]), label=metric[0][i])
+                        ax[k//2, k % 2].plot(np.array(train_hist_df[metric[-1][i]]), label=metric[-1][i])
+                    else:
+                        ax[k // 2, k % 2].plot(np.array(train_hist_df[metric[0][i]]), label=f'Step {i + 1}')
 
-            plt_nr = 0
-            for k in range(len(iou_s)):
-                ax[1, plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
-                ax[1, plt_nr].set_ylim(0, 1)
-                ax[1, plt_nr].set_xlim(0, epoch)
-                ax[1, plt_nr].set_xlabel('Epoch')
-                ax[1, plt_nr].set_title('IoU')
-                ax[1, plt_nr].grid('on')
-                ax[1, plt_nr].legend()
-            plt_nr += 1
-            for k in range(len(iou_s)):
-                ax[1, plt_nr].plot(np.array(train_hist_df[val_iou_s[k]]), label=f'Frame {k + 1}')
-                ax[1, plt_nr].set_ylim(0, 1)
-                ax[1, plt_nr].set_xlim(0, epoch)
-                ax[1, plt_nr].set_xlabel('Epoch')
-                ax[1, plt_nr].set_title('val_IoU')
-                ax[1, plt_nr].grid('on')
-                ax[1, plt_nr].legend()
-            plt_nr += 1
+                    ax[k//2, k % 2].set_ylim(0, 1)
+                    ax[k//2, k % 2].set_xlabel('Epoch')
+                    ax[k//2, k % 2].set_xlim(0, epoch - 1)
+                    ax[k//2, k % 2].set_title(titles[k])
+                    ax[k//2, k % 2].grid('on')
+                    ax[k//2, k % 2].legend()
         else:
-            fig, ax = plt.subplots(1, nr_plots, figsize=(4 * nr_plots, 5))
+            fig, ax = plt.subplots(1, nr_plots, figsize=(4 * nr_plots, 8))
+            plot_metrics = (train_keys, preps, iou_s)
+            titles = ['Loss', 'Precision and Recall', 'IoU']
 
-            for i in range(len(other)):
-                ax[plt_nr].plot(np.array(train_hist_df[train_keys[plt_nr]]), label=train_keys[plt_nr])
-                if self.val:
-                    ax[plt_nr].plot(np.array(train_hist_df[val_other[plt_nr]]), label=val_other[plt_nr])
-                ax[plt_nr].set_ylim(0, 1)
-                ax[plt_nr].set_xlim(0, epoch)
-                ax[plt_nr].set_xlabel('Epoch')
-                ax[plt_nr].set_title(train_keys[plt_nr])
-                ax[plt_nr].grid('on')
-                ax[plt_nr].legend()
-            plt_nr += 1
-
-            for k in range(len(preps)):
-                ax[plt_nr].plot(np.array(train_hist_df[preps[k]]), label=preps[k])
-                if self.val:
-                    ax[plt_nr].plot(np.array(train_hist_df[val_preps[k]]), label=val_preps[k])
-                ax[plt_nr].set_ylim(0, 1)
-                ax[plt_nr].set_xlim(0, epoch)
-                ax[plt_nr].set_xlabel('Epoch')
-                ax[plt_nr].set_title('Precision and Recall')
-                ax[plt_nr].grid('on')
-                ax[plt_nr].legend()
-            plt_nr += 1
-
-            for k in range(len(iou_s)):
-                ax[plt_nr].plot(np.array(train_hist_df[iou_s[k]]), label=f'Frame {k + 1}')
-                ax[plt_nr].set_ylim(0, 1)
-                ax[plt_nr].set_xlim(0, epoch)
-                ax[plt_nr].set_xlabel('Epoch')
-                ax[plt_nr].set_title('IoU')
-                ax[plt_nr].grid('on')
-                ax[plt_nr].legend()
+            for k, metric in enumerate(plot_metrics):
+                for i in range(len(metric)):
+                    if titles[k] == 'IoU':
+                        ax[k].plot(np.array(train_hist_df[metric[i]]), label=f'Step {i + 1}')
+                    else:
+                        ax[k].plot(np.array(train_hist_df[metric[i]]), label=metric[i])
+                    ax[k].set_ylim(0, 1)
+                    ax[k].set_xlim(0, epoch - 1)
+                    ax[k].set_xlabel('Epoch')
+                    ax[k].set_title(titles[k])
+                    ax[k].grid('on')
+                    ax[k].legend()
 
         if show:
-            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix' + end_name)
+            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix ' + name_note)
             fig.tight_layout()
             plt.show()
         else:
             make_folder(name_note)
-            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix' + end_name)
+            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix ' + name_note)
             fig.tight_layout()
             # Save the plot inside the folder
             file_path = os.path.join(name_note, f'{self.model_type} on {self.mat_size}' + end_name)
-            plt.savefig(file_path)
+            plt.savefig(file_path + '.pdf')
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
                                movies_to_show=0, with_val=False, both=False, interval=500, plot=True,
@@ -761,15 +707,15 @@ if __name__ == '__main__':
     }
     normal_val = [{'val_size': (3, 4)},
                   {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
-    val__param = [ {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}
-                  ]
+    val__param = [{'val_size': (3, 4)},
+                  {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
-    normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'brain', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['cnn-rnn']
+    normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'mod-res', 'cnn-res', 'cnn-rnn', 'rnn']
+    model__types = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'mod-res', 'cnn-res', 'cnn-rnn', 'rnn']
 
     train__param = [
         500,  # batch_size =
@@ -777,5 +723,5 @@ if __name__ == '__main__':
         100,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['res-line'])
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['Bok', 'line'])
     # combine_csv_files()

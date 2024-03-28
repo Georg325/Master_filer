@@ -28,7 +28,7 @@ matrix_params = {
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = ('deep-res')
+model_type = 'cnn'
 
 data_handler = MovieDataHandler(**matrix_params)
 # %%
@@ -39,7 +39,7 @@ data_handler.load_model(model, model_type)  # auto, line, triangle, none, custom
 # %%
 batch_size = 500
 batch_num = 20
-epochs = 0
+epochs = 50
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 

@@ -29,7 +29,7 @@ def build_model(model_type, parameters):
         return build_unet_rnn(parameters)
     elif model_type == 'deep-res':
         return build_deep_res(parameters)
-    elif model_type == 'brain':
+    elif model_type == 'mod-res':
         return build_brain(parameters)
     elif model_type == 'cnn-mod-res':
         return build_cnn_brain(parameters)
