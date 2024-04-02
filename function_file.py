@@ -155,7 +155,7 @@ class MovieDataHandler:
     def plot_matrices(self, model, num_to_pred, interval=500, val=False):
         input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, num_to_pred, val)
         plt.clf()
-        fig, axes = plt.subplots(1, 3, figsize=(12, 4))  # 1 row, 3 columns
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
 
         def update(frame):
             # Plot Input Matrix
@@ -176,14 +176,10 @@ class MovieDataHandler:
 
         title = f'Prediction with '
 
-        if not self.rotate:
-            title += 'non rotated, '
-        if not self.new_background:
-            title += 'static background, '
         if val:
-            title += 'val data, '
+            title += 'alternative data, '
 
-        title += f' {self.model_type} model on {self.mat_size} matrix'
+        title += f' {self.model_type} model'
 
         fig.suptitle(title)
 
@@ -191,17 +187,21 @@ class MovieDataHandler:
         plt.show()
         return animation
 
-    def display_frames(self, model, num_frames=1000, num_to_pred=1, val=False):
+    def display_frames(self, model, num_frames=6, num_to_pred=1, val=False):
         for _ in range(num_to_pred):
             num_frames = max(min(self.fades_per_mat, num_frames), 2)
             input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1, val)
-            fig, axes = plt.subplots(num_frames, 3)  # num_frames rows, 3 columns
+            fig, axes = plt.subplots(num_frames, 3, figsize=(4, 3*num_frames))  # num_frames rows, 3 columns
+            title = f'Timesteps from the '
+            if val:
+                title += 'alternative data, '
+            fig.suptitle(title + f'{self.model_type} model')
             im = []
             for i in range(num_frames):
                 # Plot Combined Matrix (True Matrix overlaid on Predicted Matrix)
                 im.append(axes[i, 0].imshow(input_matrix[i], interpolation='nearest', aspect='auto', vmin=0, vmax=1))
                 if i == 0:
-                    axes[i, 0].set_title('Input Matrix')  # Title on the first plot only
+                    axes[i, 0].set_title('Input')  # Title on the first plot only
                 axes[i, 0].set_xticks([])
                 axes[i, 0].set_yticks([])
                 axes[i, 0].set_xlabel('')
@@ -219,7 +219,7 @@ class MovieDataHandler:
                 im.append(axes[i, 2].imshow(predicted_line_pos_mat[i], interpolation='nearest', aspect='auto', vmin=0,
                                             vmax=1))
                 if i == 0:
-                    axes[i, 2].set_title('Predicted Line Position Matrix')
+                    axes[i, 2].set_title('Predicted Line')
                 axes[i, 2].set_xticks([])
                 axes[i, 2].set_yticks([])
                 axes[i, 2].set_xlabel('')
@@ -227,18 +227,6 @@ class MovieDataHandler:
 
             plt.tight_layout(pad=0.15)
             plt.show(block=False)
-
-            title = f'Movie from the '
-
-            if not self.rotate:
-                title += 'non rotated, '
-            if not self.new_background:
-                title += 'static background, '
-            if val:
-                title += 'val data, '
-            title += f'{self.model_type} model'
-
-            fig.suptitle(title)
         plt.show()
 
     def unique_lines(self):
@@ -419,7 +407,7 @@ class MovieDataHandler:
                 nr_plots += 1
 
         if self.val:
-            fig, ax = plt.subplots(2, nr_plots // 2, figsize=(2 * nr_plots, 8))
+            fig, ax = plt.subplots(2, 2, figsize=(12, 12))
             plot_metrics = ([train_keys, val_train_keys], [preps, val_preps], [iou_s], [val_iou_s])
             titles = ['Loss', 'Precision and Recall', 'IoU', 'val_IoU']
 
@@ -439,7 +427,7 @@ class MovieDataHandler:
                     ax[k//2, k % 2].grid('on')
                     ax[k//2, k % 2].legend()
         else:
-            fig, ax = plt.subplots(1, nr_plots, figsize=(4 * nr_plots, 8))
+            fig, ax = plt.subplots(1, 3, figsize=(18, 6))
             plot_metrics = (train_keys, preps, iou_s)
             titles = ['Loss', 'Precision and Recall', 'IoU']
 
@@ -462,10 +450,10 @@ class MovieDataHandler:
             plt.show()
         else:
             make_folder(name_note)
-            fig.suptitle(f'Metrics from the {self.model_type} model on {self.mat_size} matrix ' + name_note)
+            fig.suptitle(f'Metrics from the {self.model_type} model ' + name_note)
             fig.tight_layout()
             # Save the plot inside the folder
-            file_path = os.path.join(name_note, f'{self.model_type} on {self.mat_size}' + end_name)
+            file_path = os.path.join(name_note, f'{self.model_type}' + end_name)
             plt.savefig(file_path + '.pdf')
 
     def after_training_metrics(self, model, hist=None, epochs=0, movies_to_plot=0, frames_to_show=1000,
@@ -659,6 +647,19 @@ def full_triangle(a, b, c):
         yield from rg.bresenham_line(c, x, endpoint=True)
 
 
+def train_time_print(time_start):
+    time_end = time.time() - time_start
+
+    hours, remainder = divmod(int(time_end), 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if hours > 0:
+        print(f"Training time: {hours} hours, {minutes} minutes, and {seconds} seconds")
+    elif minutes > 0:
+        print(f"Training time: {minutes} minutes and {seconds} seconds")
+    else:
+        print(f"Training time: {seconds} seconds")
+
 def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note=None):
     if name_note is None:
         name_note = ['test' for _ in range(len(val_params))]
@@ -707,21 +708,20 @@ if __name__ == '__main__':
     }
     normal_val = [{'val_size': (3, 4)},
                   {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
-    val__param = [{'val_size': (3, 4)},
-                  {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
+    val__param = [{'rotate': False, 'val_rotate': False, 'val_size': (2, 6), 'val': False}]
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
     normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'mod-res', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'mod-res', 'cnn-res', 'cnn-rnn', 'rnn']
+    model__types = ['dense']
 
     train__param = [
-        500,  # batch_size =
+        50,  # batch_size =
         20,  # batch_num =
-        100,  # epochs =
+        10,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['Bok', 'line'])
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['test'])
     # combine_csv_files()

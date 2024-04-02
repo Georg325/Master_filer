@@ -33,6 +33,8 @@ def build_model(model_type, parameters):
         return build_brain(parameters)
     elif model_type == 'cnn-mod-res':
         return build_cnn_brain(parameters)
+    elif model_type == 'gru':
+        return build_gru(parameters)
     model_type = input('Enter model:')
     if model_type == '':
         breakpoint('error')
@@ -272,3 +274,21 @@ def build_brain(parameters):
     model.add(la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1))))
     return model
 
+
+def build_gru(parameters):
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+    neuron_base = round(64 * rnn_scaling)
+    model = m.Sequential()
+
+    model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
+    model.add(la.TimeDistributed(la.Flatten()))
+    model.add(la.GRU(100, activation='tanh', return_sequences=True))
+    model.add(la.GRU(100, activation='tanh', return_sequences=True))
+    model.add(la.GRU(100, activation='tanh', return_sequences=True))
+    model.add(la.GRU(100, activation='tanh', return_sequences=True))
+
+    model.add(la.TimeDistributed(la.Dense(mat_size[0] * mat_size[1], activation='sigmoid')))
+
+    # Reshape to the desired output shape
+    model.add(la.Reshape((pic_per_mat, mat_size[0], mat_size[1], 1)))
+    return model

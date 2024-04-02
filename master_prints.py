@@ -7,6 +7,7 @@ import pandas as pd
 
 import tikzplotlib as tikz
 import re
+from function_file import make_folder
 
 
 def make_kernel_plot():
@@ -137,18 +138,7 @@ def plot_comparison(metrics, data_path='combined_data.csv', ):
     plt.show()
 
 
-def train_time_print(time_start):
-    time_end = time.time() - time_start
 
-    hours, remainder = divmod(int(time_end), 3600)
-    minutes, seconds = divmod(remainder, 60)
-
-    if hours > 0:
-        print(f"Training time: {hours} hours, {minutes} minutes, and {seconds} seconds")
-    elif minutes > 0:
-        print(f"Training time: {minutes} minutes and {seconds} seconds")
-    else:
-        print(f"Training time: {seconds} seconds")
 
 
 def parse_plots(sub_folder):
@@ -156,10 +146,10 @@ def parse_plots(sub_folder):
     for filename in os.listdir(folder_path):
         if filename.endswith('.csv'):
             file_path = f'{folder_path}/{filename}'
-            ind_plot(file_path)
+            ind_plot(file_path, sub_folder)
 
 
-def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv'):
+def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv', sub_folder=''):
     df = pd.read_csv(filepath, index_col=0)
     df.pop('Train_time')
 
@@ -185,7 +175,7 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
                 metric_groups[5].append(metric)
 
     if len(metric_groups[0]) > 0:
-        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+        fig, ax = plt.subplots(2, 2, figsize=(11, 11))
         plot_metrics = ([metric_groups[0], metric_groups[3]], [metric_groups[1], metric_groups[4]], [metric_groups[5]],
                         [metric_groups[2]])
         titles = ['Loss', 'Precision and Recall', 'IoU', 'val_IoU']
@@ -201,7 +191,10 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
 
                 ax[k // 2, k % 2].set_ylim(0, 1)
                 ax[k // 2, k % 2].set_xlabel('Epoch')
-                ax[k // 2, k % 2].set_xlim(0, epoch)
+                if epoch >= 29:
+                    ax[k // 2, k % 2].set_xlim(0, epoch + 1)
+                else:
+                    ax[k // 2, k % 2].set_xlim(0, epoch)
                 ax[k // 2, k % 2].set_title(titles[k])
                 ax[k // 2, k % 2].grid('on')
                 if titles[k] != 'IoU':
@@ -218,26 +211,29 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
                 else:
                     ax[k].plot(np.array(df[metric[i]]), label=metric[i])
                 ax[k].set_ylim(0, 1)
-                ax[k].set_xlim(0, epoch)
+                if epoch >= 29:
+                    ax[k].set_xlim(0, epoch + 1)
+                else:
+                    ax[k].set_xlim(0, epoch)
                 ax[k].set_xlabel('Epoch')
                 ax[k].set_title(titles[k])
                 ax[k].grid('on')
                 ax[k].legend()
     name_eat = filepath.split('/')[-1].split('_')[0]
-    rest = re.sub(name_eat+'_', '', filepath.split('/')[-1])
-    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + rest)
+    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + sub_folder)
     fig.tight_layout()
-    plt.savefig(filepath.split('/')[-1] + '.pdf')
+    make_folder(sub_folder)
+    plt.savefig(sub_folder + '/' + filepath.split('/')[-1].split('.')[0] + '.pdf')
 
 
 # make_kernel_plot()
-parse_plots('tul')
+# parse_plots('box')
 
 # ind_plot('csv_files/tul/dense_e100_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv')
 
 if __name__ == '__mai n__':
     # make_rec_weights(100, 7, False, True)
-    combine_csv_files('res-line')
+    combine_csv_files('Bok')
     metrics_to_compare = ['loss', 'val_loss', 'IoU9', 'val_IoU9', ]
     plot_comparison(metrics_to_compare)
     metrics_to_compare = ['precision', 'recall']

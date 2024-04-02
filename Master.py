@@ -1,5 +1,4 @@
 from function_file import *
-from master_prints import train_time_print
 import matplotlib.pyplot as plt
 
 # %%
@@ -28,7 +27,7 @@ matrix_params = {
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = 'cnn'
+model_type = 'cnn-rnn'
 
 data_handler = MovieDataHandler(**matrix_params)
 # %%
@@ -39,7 +38,7 @@ data_handler.load_model(model, model_type)  # auto, line, triangle, none, custom
 # %%
 batch_size = 500
 batch_num = 20
-epochs = 50
+epochs = 0
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -55,5 +54,5 @@ train_time_print(start)
 data_handler.save_model(model, model_type, epochs)  # auto, line, triangle, none, custom
 
 # %%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=3, movies_to_show=1, both=False,
                                     plot=True)
