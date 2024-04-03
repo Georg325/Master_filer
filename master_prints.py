@@ -92,16 +92,18 @@ def combine_csv_files(sub_folder, output_filename='combined_data', to_csv=True, 
     combined_data['Epochs'] = combined_data['Epochs'] + 1
 
     if to_csv:
-        combined_data.to_csv(output_filename + '.csv', index=False)
+        combined_data.to_csv(sub_folder + '_' + output_filename + '.csv', index=False)
     if excel:
-        combined_data.to_excel(output_filename + '.xlsx', index=False)
+        combined_data.to_excel(sub_folder + '_' + output_filename + '.xlsx', index=False)
 
 
-def plot_comparison(metrics, data_path='combined_data.csv', ):
+def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=None):
     num_epoch = 100
     # Load CSV file into a DataFrame
-    data = pd.read_csv(data_path)
-    data.sort_values(by=['Train_time'], inplace=True, ascending=False)
+    data = pd.read_csv(sub_folder + '_' + data_path)
+    if sort_by is None:
+        sort_by = metrics[0]
+    data.sort_values(by=[sort_by], inplace=True, ascending=False)
 
     # Filter data for entries with 10 epochs, Rotate is True, and Subset is False
     filtered_data = data
@@ -136,9 +138,6 @@ def plot_comparison(metrics, data_path='combined_data.csv', ):
     plt.grid(True)
     tikz.save("test.tex")
     plt.show()
-
-
-
 
 
 def parse_plots(sub_folder):
@@ -178,7 +177,7 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
         fig, ax = plt.subplots(2, 2, figsize=(11, 11))
         plot_metrics = ([metric_groups[0], metric_groups[3]], [metric_groups[1], metric_groups[4]], [metric_groups[5]],
                         [metric_groups[2]])
-        titles = ['Loss', 'Precision and Recall', 'IoU', 'val_IoU']
+        titles = ['Loss', 'Precision and Recall', 'IoU', 'alt_IoU']
 
         for k, metric in enumerate(plot_metrics):
             for i in range(len(metric[0])):
@@ -231,9 +230,9 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
 
 # ind_plot('csv_files/tul/dense_e100_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv')
 
-if __name__ == '__mai n__':
+if __name__ == '__main__':
     # make_rec_weights(100, 7, False, True)
-    combine_csv_files('Bok')
-    metrics_to_compare = ['loss', 'val_loss', 'IoU9', 'val_IoU9', ]
-    plot_comparison(metrics_to_compare)
+    combine_csv_files('box')
+    metrics_to_compare = ['loss', 'val_loss']
+    plot_comparison('box', metrics_to_compare)
     metrics_to_compare = ['precision', 'recall']

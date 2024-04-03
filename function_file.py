@@ -191,11 +191,8 @@ class MovieDataHandler:
         for _ in range(num_to_pred):
             num_frames = max(min(self.fades_per_mat, num_frames), 2)
             input_matrix, true_matrix, predicted_line_pos_mat = self.generate_pred_data(model, 1, val)
-            fig, axes = plt.subplots(num_frames, 3, figsize=(4, 3*num_frames))  # num_frames rows, 3 columns
-            title = f'Timesteps from the '
-            if val:
-                title += 'alternative data, '
-            fig.suptitle(title + f'{self.model_type} model')
+            fig, axes = plt.subplots(num_frames, 3, figsize=(5, 5*num_frames))  # num_frames rows, 3 columns
+
             im = []
             for i in range(num_frames):
                 # Plot Combined Matrix (True Matrix overlaid on Predicted Matrix)
@@ -224,7 +221,10 @@ class MovieDataHandler:
                 axes[i, 2].set_yticks([])
                 axes[i, 2].set_xlabel('')
                 axes[i, 2].set_ylabel('')
-
+            title = f'Timesteps from the '
+            if val:
+                title += 'alternative data, '
+            fig.suptitle(title + f'{self.model_type} model')
             plt.tight_layout(pad=0.15)
             plt.show(block=False)
         plt.show()

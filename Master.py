@@ -33,7 +33,7 @@ data_handler = MovieDataHandler(**matrix_params)
 # %%
 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 
-data_handler.load_model(model, model_type)  # auto, line, triangle, none, custom
+data_handler.load_model(model, weights_shape=model_type)  # auto, line, triangle, none, custom
 
 # %%
 batch_size = 500
@@ -54,5 +54,5 @@ train_time_print(start)
 data_handler.save_model(model, model_type, epochs)  # auto, line, triangle, none, custom
 
 # %%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=3, movies_to_show=1, both=False,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=3, movies_to_show=0, both=False,
                                     plot=True)
