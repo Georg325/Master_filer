@@ -4,8 +4,6 @@ import time
 
 import numpy as np
 import pandas as pd
-
-import tikzplotlib as tikz
 import re
 from function_file import make_folder
 
@@ -98,7 +96,6 @@ def combine_csv_files(sub_folder, output_filename='combined_data', to_csv=True, 
 
 
 def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=None):
-    num_epoch = 100
     # Load CSV file into a DataFrame
     data = pd.read_csv(sub_folder + '_' + data_path)
     if sort_by is None:
@@ -116,7 +113,7 @@ def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=
     fig, ax = plt.subplots()
 
     num_metrics = len(metrics)
-    bar_width = 0.2
+    bar_width = 0.35
 
     # Set positions for the bars
     bar_positions = [range(len(model_names))]
@@ -130,13 +127,13 @@ def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=
     # Set labels and title
     ax.set_xlabel('Name')
     ax.set_ylabel('Metrics')
-    ax.set_title(f'Comparison of Metrics at {str(num_epoch)} Epochs')
+    ax.set_title(f'Comparison of Metrics for {sub_folder}')
     ax.set_xticks([pos + (num_metrics - 1) * bar_width / 2 for pos in bar_positions[0]])
     ax.set_xticklabels(model_names)
     ax.legend()
 
     plt.grid(True)
-    tikz.save("test.tex")
+
     plt.show()
 
 

@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from models import build_model
 
-import tikzplotlib
-
 rng = rd.SystemRandom()
 
 

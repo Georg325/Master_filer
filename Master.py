@@ -27,7 +27,7 @@ matrix_params = {
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = 'cnn-rnn'
+model_type = 'mod-res'
 
 data_handler = MovieDataHandler(**matrix_params)
 # %%
