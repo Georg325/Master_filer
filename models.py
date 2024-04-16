@@ -61,18 +61,16 @@ def build_cnn(parameters):
 
 def build_cnn_rnn(parameters):
     mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
-    filter_base = round(32 * cnn_scaling)
-    neuron_base = round(64 * rnn_scaling)
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(3, 3), padding='same', activation='relu')))
-    model.add(la.TimeDistributed(la.Conv2D(filter_base, kernel_size=(2, 2), padding='same', activation='tanh')))
+    model.add(la.TimeDistributed(la.Conv2D(32, kernel_size=(3, 3), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(32, kernel_size=(2, 2), padding='same', activation='tanh')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
 
     model.add(la.TimeDistributed(la.Flatten()))
-    model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True))
-    model.add(la.LSTM(neuron_base, activation='tanh', return_sequences=True))
+    model.add(la.LSTM(64, activation='tanh', return_sequences=True))
+    model.add(la.LSTM(64, activation='tanh', return_sequences=True))
 
     model.add(la.TimeDistributed(la.Dense(mat_size[0] * mat_size[1], activation='sigmoid')))
 
@@ -105,9 +103,9 @@ def build_deep_res(parameters):
     inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
     x = [la.Reshape((pic_per_mat, np.prod(mat_size)))(inputs)]
 
-    for _ in range(2):
-        x.append(ReservoirLayer(250)(x[-1]))
-    con = la.concatenate(x[1:])
+    x.append(ReservoirLayer(250)(x[-1]))
+    x.append(ReservoirLayer(250, special=True)(x[-1]))
+    con = la.concatenate(x[2:])
     den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
     output = la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)))(den)
     model = tf.keras.Model(inputs=inputs, outputs=output)
@@ -122,7 +120,10 @@ def Dense(parameters):
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size))))
-    model.add(la.TimeDistributed(la.Dense(100, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(200, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(200, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(200, activation='tanh')))
+    model.add(la.TimeDistributed(la.Dense(200, activation='tanh')))
     model.add(la.TimeDistributed(la.Dense(np.prod(mat_size), activation='sigmoid')))
 
     # Reshape to the desired output shape
@@ -150,8 +151,8 @@ def build_cnn_res(parameters):
     model = m.Sequential()
 
     model.add(la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1)))
-    model.add(la.TimeDistributed(la.Conv2D(cnn_filter, kernel_size=(5, 5), padding='same', activation='relu')))
-    model.add(la.TimeDistributed(la.Conv2D(cnn_filter*2, kernel_size=(3, 3), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(16, kernel_size=(5, 5), padding='same', activation='relu')))
+    model.add(la.TimeDistributed(la.Conv2D(32, kernel_size=(3, 3), padding='same', activation='relu')))
     model.add(la.TimeDistributed(la.MaxPooling2D(pool_size=(2, 2), strides=2)))
     model.add(la.Reshape((pic_per_mat, np.prod(mat_size) * cnn_filter//2)))
     model.add(ReservoirLayer(250))

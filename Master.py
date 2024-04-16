@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # %%
 matrix_params = {
-    'mat_size': (10, 10),
+    'mat_size': (6, 10),
     'fades_per_mat': 10,
 
     'strength_kernel': (2, 3),
@@ -27,18 +27,18 @@ matrix_params = {
 # rnn, cnn-rnn,
 # unet, unet-rnn,
 # brain, cnn-brain,
-model_type = 'mod-res'
+model_type = 'dense'
 
 data_handler = MovieDataHandler(**matrix_params)
 # %%
 model, callbacks = data_handler.init_model(model_type, iou_s=True, info=True)
 
-data_handler.load_model(model, weights_shape=model_type)  # auto, line, triangle, none, custom
+data_handler.load_model(model, weights_shape='none')  # auto, line, triangle, none, custom
 
 # %%
 batch_size = 500
 batch_num = 20
-epochs = 0
+epochs = 100
 
 generator, val_gen = data_handler.init_generator(batch_size, batch_num)
 
@@ -54,5 +54,5 @@ train_time_print(start)
 data_handler.save_model(model, model_type, epochs)  # auto, line, triangle, none, custom
 
 # %%
-data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=3, movies_to_show=0, both=False,
+data_handler.after_training_metrics(model, hist=hist, epochs=epochs, movies_to_plot=0, movies_to_show=0, both=False,
                                     plot=True)

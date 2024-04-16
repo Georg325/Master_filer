@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import os
-import time
 
 import numpy as np
 import pandas as pd
@@ -110,7 +109,7 @@ def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=
     model_names = filtered_data['Name']
 
     # Plot the data
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
 
     num_metrics = len(metrics)
     bar_width = 0.35
@@ -216,20 +215,21 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
                 ax[k].grid('on')
                 ax[k].legend()
     name_eat = filepath.split('/')[-1].split('_')[0]
-    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + sub_folder)
+    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + 'line')
     fig.tight_layout()
     make_folder(sub_folder)
     plt.savefig(sub_folder + '/' + filepath.split('/')[-1].split('.')[0] + '.pdf')
 
 
 # make_kernel_plot()
-# parse_plots('box')
+# parse_plots('test_line')
 
 # ind_plot('csv_files/tul/dense_e100_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv')
 
 if __name__ == '__main__':
     # make_rec_weights(100, 7, False, True)
-    combine_csv_files('box')
+    sub_ = 'line'
+    combine_csv_files(sub_)
     metrics_to_compare = ['loss', 'val_loss']
-    plot_comparison('box', metrics_to_compare)
+    plot_comparison(sub_, metrics_to_compare)
     metrics_to_compare = ['precision', 'recall']

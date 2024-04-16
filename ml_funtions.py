@@ -62,7 +62,7 @@ class IoUMaker(tf.keras.metrics.Metric):
 
 
 class ReservoirLayer(tf.keras.layers.Layer):
-    def __init__(self, reservoir_size, gamma=0.95, **kwargs):
+    def __init__(self, reservoir_size, gamma=0.95, special=False, **kwargs):
         super(ReservoirLayer, self).__init__(**kwargs)
 
         self.reservoir_size = reservoir_size
@@ -73,7 +73,8 @@ class ReservoirLayer(tf.keras.layers.Layer):
         self.bias = None
         self.recurrent_weights = None
         self.input_weights = None
-        self.trainable = False
+        self.trainables = False
+        self.special = special
 
     def build(self, input_shape):
         feature_size = input_shape[-1]  # Infer input size dynamically
@@ -81,21 +82,21 @@ class ReservoirLayer(tf.keras.layers.Layer):
         self.input_weights = self.add_weight("input_weights",
                                              shape=(self.reservoir_size, feature_size),
                                              initializer=tf.keras.initializers.GlorotNormal(),
-                                             trainable=self.trainable)
+                                             trainable=self.special)
 
         self.recurrent_weights = self.add_weight("recurrent_weights",
                                                  shape=(self.reservoir_size, self.reservoir_size),
                                                  initializer=tf.keras.initializers.Orthogonal(),
-                                                 trainable=self.trainable)
+                                                 trainable=self.trainables)
 
         self.bias = self.add_weight("bias",
                                     shape=(self.reservoir_size, 1),
                                     initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                    trainable=self.trainable)
+                                    trainable=self.trainables)
 
         self.reservoir_start = self.add_weight("reservoir_state",
                                                shape=(self.reservoir_size, 1),
-                                               trainable=self.trainable,
+                                               trainable=self.trainables,
                                                initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
                                                )
 

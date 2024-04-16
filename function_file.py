@@ -658,6 +658,7 @@ def train_time_print(time_start):
     else:
         print(f"Training time: {seconds} seconds")
 
+
 def train_multiple(matrix_params, model_types, train_param, val_params, run=False, name_note=None):
     if name_note is None:
         name_note = ['test' for _ in range(len(val_params))]
@@ -706,20 +707,21 @@ if __name__ == '__main__':
     }
     normal_val = [{'val_size': (3, 4)},
                   {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
-    val__param = [{'rotate': False, 'val_rotate': False, 'val_size': (2, 6), 'val': False}]
+    val__param = [{'val_size': (3, 4)},
+                  {'rotate': False, 'val_rotate': False, 'val_size': (2, 6)}]
 
     # 'dense', 'cnn', 'cnn-lstm',
     # 'res', 'cnn-res', 'deep-res', 'res-dense', 'brain'
     # 'rnn', 'cnn-rnn',
     # 'unet', 'unet-rnn'
     normal_model = ['cnn', 'res', 'cnn-lstm', 'deep-res', 'mod-res', 'cnn-res', 'cnn-rnn', 'rnn']
-    model__types = ['dense']
+    model__types = ['deep-res']
 
     train__param = [
-        50,  # batch_size =
+        500,  # batch_size =
         20,  # batch_num =
-        10,  # epochs =
+        100,  # epochs =
     ]
 
-    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['test'])
+    train_multiple(matrix__params, model__types, train__param, val__param, run=True, name_note=['test_box', 'test_line'])
     # combine_csv_files()
