@@ -4,7 +4,6 @@ import os
 import numpy as np
 import pandas as pd
 import re
-from function_file import make_folder
 
 
 def make_kernel_plot():
@@ -109,7 +108,7 @@ def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=
     model_names = filtered_data['Name']
 
     # Plot the data
-    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    fig, ax = plt.subplots(figsize=(7.5, 5))
 
     num_metrics = len(metrics)
     bar_width = 0.35
@@ -126,7 +125,7 @@ def plot_comparison(sub_folder, metrics, data_path='combined_data.csv', sort_by=
     # Set labels and title
     ax.set_xlabel('Name')
     ax.set_ylabel('Metrics')
-    ax.set_title(f'Comparison of Metrics for {sub_folder}')
+    ax.set_title(f'Comparison of Metrics for the {sub_folder} dataset')
     ax.set_xticks([pos + (num_metrics - 1) * bar_width / 2 for pos in bar_positions[0]])
     ax.set_xticklabels(model_names)
     ax.legend()
@@ -145,6 +144,7 @@ def parse_plots(sub_folder):
 
 
 def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv', sub_folder=''):
+    from function_file import make_folder
     df = pd.read_csv(filepath, index_col=0)
     df.pop('Train_time')
 
@@ -215,20 +215,20 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
                 ax[k].grid('on')
                 ax[k].legend()
     name_eat = filepath.split('/')[-1].split('_')[0]
-    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + 'line')
+    fig.suptitle(f'Metrics from the ' + name_eat + ' model ' + 'box')
     fig.tight_layout()
     make_folder(sub_folder)
     plt.savefig(sub_folder + '/' + filepath.split('/')[-1].split('.')[0] + '.pdf')
 
 
 # make_kernel_plot()
-# parse_plots('test_line')
+# parse_plots('box')
 
-# ind_plot('csv_files/tul/dense_e100_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.csv')
+ind_plot('csv_files/box/de2-res_e100_(6, 2)_v(3, 4)_rT_bT_rvT_bvT_subF.csv', sub_folder='test_line')
 
-if __name__ == '__main__':
+if __name__ == '__mai n__':
     # make_rec_weights(100, 7, False, True)
-    sub_ = 'line'
+    sub_ = 'box'
     combine_csv_files(sub_)
     metrics_to_compare = ['loss', 'val_loss']
     plot_comparison(sub_, metrics_to_compare)

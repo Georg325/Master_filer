@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import keras as ks
+import matplotlib.pyplot as plt
 
 from abc import ABC
 
@@ -99,6 +100,8 @@ class ReservoirLayer(tf.keras.layers.Layer):
                                                trainable=self.trainables,
                                                initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
                                                )
+
+        # data = self.recurrent_weights.numpy().flatten()
 
         super(ReservoirLayer, self).build(input_shape)
 

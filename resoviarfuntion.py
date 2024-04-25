@@ -114,6 +114,9 @@ class BrainLayer(tf.keras.layers.Layer):
                                                      initializer=tf.constant_initializer(value=self.made_weights),
                                                      trainable=False)
 
+        data = self.recurrent_weights.numpy().flatten()
+        pri_dis(data, True)
+
         self.bias = self.add_weight("bias",
                                     shape=(self.reservoir_size, 1),
                                     initializer=tf.keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -235,6 +238,44 @@ def make_rec_weights(size, thickness=1, info=False, show=False, num=None, shuffl
         plt.title('Example weights:')
         plt.show()
     return a
+
+
+def pri_dis(data, bell_curve=False, num_of_bins=100):
+    if bell_curve:
+        mean = np.mean(data)
+        std_dev = np.std(data)
+
+        # Create a range of values for the x-axis
+        x = np.linspace(min(data), max(data), num_of_bins)
+
+        # Compute the corresponding y-values using the normal distribution formula
+        y = (1 / (std_dev * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std_dev) ** 2)
+
+        # Plot the histogram
+        hist, bins, _ = plt.hist(data, bins=num_of_bins+1, density=False, alpha=0.7)  # density=False for non-normalized histogram
+        plt.title(f'Frequency of the input weights, with μ={mean:.2f} and σ={std_dev:.2f}')
+        plt.xlabel('Values')
+        plt.ylabel('Frequency')
+
+        # Calculate the width of each bin
+        bin_width = bins[1] - bins[0]
+
+        # Scale the bell curve to match the frequency of the histogram
+        scaling_factor = len(data) * bin_width
+        plt.plot(x, scaling_factor * y, color='red', label='Bell Curve')
+        mean_frequency = np.mean(hist)
+
+        # Plot a horizontal line at the mean frequency
+        # plt.axhline(mean_frequency, color='red', linestyle='--', label='Mean Frequency')
+
+    else:
+        hist, bins, _ = plt.hist(data, bins=num_of_bins+1, density=False)  # density=False for non-normalized histogram
+
+# Show legend
+    plt.legend()
+
+    # Show the plot
+    plt.show()
 
 
 if '__ma in__' == __name__:
