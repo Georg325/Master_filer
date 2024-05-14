@@ -29,6 +29,8 @@ def build_model(model_type, parameters):
         return build_unet_rnn(parameters)
     elif model_type == 'deep-res':
         return build_deep_res(parameters)
+    elif model_type == 'de2-res':
+        return build_de2_res(parameters)
     elif model_type == 'mod-res':
         return build_brain(parameters)
     elif model_type == 'cnn-mod-res':
@@ -70,7 +72,7 @@ def build_cnn_rnn(parameters):
 
     model.add(la.TimeDistributed(la.Flatten()))
     model.add(la.LSTM(64, activation='tanh', return_sequences=True))
-    model.add(la.LSTM(64, activation='tanh', return_sequences=True))
+    model.add(la.LSTM(128, activation='tanh', return_sequences=True))
 
     model.add(la.TimeDistributed(la.Dense(mat_size[0] * mat_size[1], activation='sigmoid')))
 
@@ -97,7 +99,7 @@ def build_cnn_lstm(parameters):
     return model
 
 
-def build_deep_res(parameters):
+def build_de2_res(parameters):
     mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
 
     inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
@@ -106,6 +108,21 @@ def build_deep_res(parameters):
     x.append(ReservoirLayer(250)(x[-1]))
     x.append(ReservoirLayer(250, special=True)(x[-1]))
     con = la.concatenate(x[2:])
+    den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
+    output = la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)))(den)
+    model = tf.keras.Model(inputs=inputs, outputs=output)
+
+    return model
+
+def build_deep_res(parameters):
+    mat_size, cnn_scaling, rnn_scaling, pic_per_mat = parameters
+
+    inputs = la.Input(shape=(pic_per_mat, mat_size[0], mat_size[1], 1))
+    x = [la.Reshape((pic_per_mat, np.prod(mat_size)))(inputs)]
+
+    for _ in range(2):
+        x.append(ReservoirLayer(250)(x[-1]))
+    con = la.concatenate(x[1:])
     den = la.TimeDistributed(la.Dense(np.prod(mat_size), activation='tanh'))(con)
     output = la.TimeDistributed(la.Reshape((mat_size[0], mat_size[1], 1)))(den)
     model = tf.keras.Model(inputs=inputs, outputs=output)

@@ -224,12 +224,14 @@ def ind_plot(filepath='csv_files/tul/dense_e5_(6, 2)_v(2, 6)_rF_bT_rvF_bvT_subF.
 # make_kernel_plot()
 # parse_plots('box')
 
-ind_plot('csv_files/box/de2-res_e100_(6, 2)_v(3, 4)_rT_bT_rvT_bvT_subF.csv', sub_folder='test_line')
+# ind_plot('csv_files/box/de2-res_e100_(6, 2)_v(3, 4)_rT_bT_rvT_bvT_subF.csv', sub_folder='test_line')
 
-if __name__ == '__mai n__':
+if __name__ == '__main__':
     # make_rec_weights(100, 7, False, True)
     sub_ = 'box'
     combine_csv_files(sub_)
-    metrics_to_compare = ['loss', 'val_loss']
-    plot_comparison(sub_, metrics_to_compare)
-    metrics_to_compare = ['precision', 'recall']
+    metrics_to_compare = ['loss', 'Train_time']
+    plot_comparison(sub_, metrics_to_compare, sort_by='Train_time')
+    sub_ = 'line'
+    combine_csv_files(sub_)
+    plot_comparison(sub_, metrics_to_compare, sort_by='Train_time')
